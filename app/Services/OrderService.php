@@ -1,0 +1,168 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Order;
+use App\Models\User;
+use App\Repositories\Interfaces\OrderRepositoryInterface;
+use App\Repositories\Interfaces\ProductRepositoryInterface;
+use App\Events\OrderCreated;
+use App\Events\OrderStatusUpdated;
+use App\Exceptions\InsufficientStockException;
+use App\Exceptions\InvalidStatusTransitionException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+
+class OrderService
+{
+    protected $orderRepository;
+    protected $productRepository;
+
+    public function __construct(
+        OrderRepositoryInterface $orderRepository,
+        ProductRepositoryInterface $productRepository
+    ) {
+        $this->orderRepository = $orderRepository;
+        $this->productRepository = $productRepository;
+    }
+
+    public function getOrderById(int $id): ?Order
+    {
+        $order = $this->orderRepository->findById($id);
+
+        if ($order) {
+            Gate::authorize('view', $order);
+        }
+
+        return $order;
+    }
+
+    public function getRecentOrders(User $user, array $filters = [])
+    {
+        $limit = $filters['limit'] ?? 5;
+
+        if ($user->role === 'admin') {
+            return $this->orderRepository->getRecentOrders($limit);
+        } elseif ($user->role === 'seller') {
+            return $this->orderRepository->getOrdersBySeller($user->id, ['limit' => $limit]);
+        } else {
+            return $this->orderRepository->getOrdersByBuyer($user->id, ['limit' => $limit]);
+        }
+    }
+
+    public function getOrdersByDateRange(User $user, string $startDate, string $endDate, array $filters = [])
+    {
+        if ($user->role === 'admin') {
+            return $this->orderRepository->getOrdersByDateRange($startDate, $endDate, $filters);
+        } elseif ($user->role === 'seller') {
+            $filters['seller_id'] = $user->id;
+            return $this->orderRepository->getOrdersByDateRange($startDate, $endDate, $filters);
+        } else {
+            $filters['buyer_id'] = $user->id;
+            return $this->orderRepository->getOrdersByDateRange($startDate, $endDate, $filters);
+        }
+    }
+
+    public function getOrdersForUser(User $user, array $filters = [])
+    {
+        switch ($user->role) {
+            case 'buyer':
+                return $this->orderRepository->getOrdersByBuyer($user->id, $filters);
+            case 'seller':
+                return $this->orderRepository->getOrdersBySeller($user->id, $filters);
+            case 'admin':
+                return $this->orderRepository->getAllOrders($filters);
+            default:
+                return collect();
+        }
+    }
+
+    public function createOrderFromCart(array $cartItems, User $buyer, array $shippingData): Order
+    {
+        Gate::authorize('create', Order::class);
+
+        return DB::transaction(function () use ($cartItems, $buyer, $shippingData) {
+            $totalAmount = 0;
+            $orderItems = [];
+
+            // Validate stock and calculate total
+            foreach ($cartItems as $item) {
+                $product = $this->productRepository->findById($item['product_id']);
+
+                if (!$product || $product->status !== 'active') {
+                    throw new \Exception("Product not available: {$product->name}");
+                }
+
+                if ($product->stock < $item['quantity']) {
+                    throw new InsufficientStockException("Insufficient stock for product: {$product->name}");
+                }
+
+                $itemTotal = $product->price * $item['quantity'];
+                $totalAmount += $itemTotal;
+
+                $orderItems[] = [
+                    'product_id' => $product->id,
+                    'quantity' => $item['quantity'],
+                    'price' => $product->price,
+                    'total' => $itemTotal
+                ];
+
+                // Update product stock
+                $this->productRepository->updateStock($product->id, $item['quantity']);
+            }
+
+            // Create order
+            $order = $this->orderRepository->create([
+                'buyer_id' => $buyer->id,
+                'total_amount' => $totalAmount,
+                'status' => 'new',
+                'shipping_address' => $shippingData['shipping_address'],
+                'phone' => $shippingData['phone'],
+                'notes' => $shippingData['notes'] ?? null
+            ]);
+
+            // Create order items
+            $this->orderRepository->createOrderItems($order, $orderItems);
+
+            // Dispatch event
+            event(new OrderCreated($order));
+
+            return $order;
+        });
+    }
+
+    public function updateOrderStatus(Order $order, string $newStatus, User $user): bool
+    {
+        Gate::authorize('update', $order);
+
+        $validTransitions = [
+            'new' => ['accepted', 'canceled'],
+            'accepted' => ['dispatched', 'canceled'],
+            'dispatched' => ['delivered'],
+            'delivered' => [],
+            'canceled' => []
+        ];
+
+        if (!isset($validTransitions[$order->status]) || !in_array($newStatus, $validTransitions[$order->status])) {
+            throw new InvalidStatusTransitionException("Invalid status transition from {$order->status} to {$newStatus}");
+        }
+
+        $updated = $this->orderRepository->updateStatus($order, $newStatus);
+
+        if ($updated) {
+            event(new OrderStatusUpdated($order, $newStatus));
+        }
+
+        return $updated;
+    }
+
+    public function getOrderStatistics()
+    {
+        return $this->orderRepository->getOrderStatistics();
+    }
+
+    public function getSellerOrderStatistics(User $seller)
+    {
+        return $this->orderRepository->getSellerOrderStatistics($seller->id);
+    }
+}

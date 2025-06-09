@@ -1,0 +1,173 @@
+/* Seller Dashboard Styles */
+:root {
+    --primary-color: #0284c7;
+    --primary-dark: #0369a1;
+    --primary-light: #bae6fd;
+    --secondary-color: #64748b;
+    --success-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --info-color: #3b82f6;
+    --light-color: #f8fafc;
+    --dark-color: #1e293b;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
+}
+
+/* Sidebar styles - similar to admin but with different accent colors */
+#sidebar-wrapper {
+    background-color: #fff;
+    width: 250px;
+    position: fixed;
+    height: 100%;
+    z-index: 1000;
+}
+
+#sidebar-wrapper .sidebar-heading {
+    padding: 1rem;
+    font-weight: bold;
+}
+
+#sidebar-wrapper .list-group-item {
+    border: none;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+}
+
+#sidebar-wrapper .list-group-item.active {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+#sidebar-wrapper .list-group-item:hover:not(.active) {
+    background-color: #f8f9fa;
+    color: var(--primary-color);
+}
+
+/* Page content wrapper */
+#page-content-wrapper {
+    width: calc(100% - 250px);
+    margin-left: 250px;
+    transition: margin 0.25s ease-out;
+}
+
+/* Toggled state */
+#wrapper.toggled #sidebar-wrapper {
+    margin-left: -250px;
+}
+
+#wrapper.toggled #page-content-wrapper {
+    width: 100%;
+    margin-left: 0;
+}
+
+/* Navbar styles */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Card styles */
+.card {
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    padding: 1rem 1.25rem;
+}
+
+/* Table styles */
+.table th {
+    font-weight: 600;
+    color: #64748b;
+    border-top: none;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* Product form styles */
+.image-preview {
+    width: 100%;
+    height: 200px;
+    border: 1px dashed #ddd;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.image-preview img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.image-preview .overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.image-preview:hover .overlay {
+    opacity: 1;
+}
+
+/* Order status badges */
+.badge.bg-new {
+    background-color: var(--info-color);
+}
+
+.badge.bg-processing {
+    background-color: var(--primary-color);
+}
+
+.badge.bg-shipped {
+    background-color: var(--warning-color);
+}
+
+.badge.bg-delivered {
+    background-color: var(--success-color);
+}
+
+.badge.bg-cancelled {
+    background-color: var(--danger-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #sidebar-wrapper {
+        margin-left: -250px;
+    }
+
+    #page-content-wrapper {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    #wrapper.toggled #sidebar-wrapper {
+        margin-left: 0;
+    }
+
+    #wrapper.toggled #page-content-wrapper {
+        margin-left: 250px;
+        width: calc(100% - 250px);
+    }
+}

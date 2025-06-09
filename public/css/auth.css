@@ -1,0 +1,61 @@
+/* Authentication Pages Styles */
+body {
+    background-color: #f8fafc;
+    font-family: 'Inter', sans-serif;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.form-control, .form-select, .input-group-text {
+    border-radius: 5px;
+    padding: 10px 15px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border-radius: 5px;
+}
+
+.btn-primary {
+    background-color: #0284c7;
+    border-color: #0284c7;
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: #0369a1;
+    border-color: #0369a1;
+}
+
+.btn-outline-primary {
+    color: #0284c7;
+    border-color: #0284c7;
+}
+
+.btn-outline-primary:hover, .btn-outline-primary:focus {
+    background-color: #0284c7;
+    border-color: #0284c7;
+}
+
+.form-check-input:checked {
+    background-color: #0284c7;
+    border-color: #0284c7;
+}
+
+.btn-check:checked+.btn-outline-primary {
+    background-color: #0284c7;
+    border-color: #0284c7;
+}
+
+.invalid-feedback {
+    font-size: 80%;
+    margin-top: 0.25rem;
+}
+
+@media (min-width: 768px) {
+    .card {
+        margin-top: 2rem;
+    }
+}
