@@ -93,3 +93,4 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
 });
 
 include __DIR__ . '/auth.php';
+include __DIR__ . '/seller.php';

@@ -1,346 +1,319 @@
 @extends('layouts.app')
 
-@section('title', 'Order #' . $order->id)
+@section('title', $product->name)
 
 @section('content')
-<div class="container">
+<div class="container py-4">
+    <!-- Breadcrumb -->
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ route('home') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ route('orders.index') }}">My Orders</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Order #{{ $order->id }}</li>
+            <li class="breadcrumb-item"><a href="{{ route('home') }}" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ route('products.index') }}"
+                    class="text-decoration-none">Products</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ $product->name }}</li>
         </ol>
     </nav>
 
-    <div class="row g-4">
-        <div class="col-lg-8">
-            <!-- Order Status -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="card-title mb-0">Order Status</h5>
-                        <span class="badge bg-{{ $order->status_color }}">{{ $order->status_label }}</span>
-                    </div>
-
-                    <div class="position-relative mt-4">
-                        <div class="progress" style="height: 3px;">
-                            <div class="progress-bar bg-success" role="progressbar"
-                                style="width: {{ $order->progress_percentage }}%"></div>
-                        </div>
-
-                        <div class="position-absolute top-0 start-0 translate-middle">
-                            <div class="rounded-circle {{ $order->progress >= 1 ? 'bg-success' : 'bg-secondary' }} text-white d-flex align-items-center justify-content-center"
-                                style="width: 30px; height: 30px;">
-                                <i class="fas fa-check"></i>
-                            </div>
-                        </div>
-
-                        <div class="position-absolute top-0 start-25 translate-middle">
-                            <div class="rounded-circle {{ $order->progress >= 2 ? 'bg-success' : 'bg-secondary' }} text-white d-flex align-items-center justify-content-center"
-                                style="width: 30px; height: 30px;">
-                                <i class="fas fa-box"></i>
-                            </div>
-                        </div>
-
-                        <div class="position-absolute top-0 start-50 translate-middle">
-                            <div class="rounded-circle {{ $order->progress >= 3 ? 'bg-success' : 'bg-secondary' }} text-white d-flex align-items-center justify-content-center"
-                                style="width: 30px; height: 30px;">
-                                <i class="fas fa-shipping-fast"></i>
-                            </div>
-                        </div>
-
-                        <div class="position-absolute top-0 start-75 translate-middle">
-                            <div class="rounded-circle {{ $order->progress >= 4 ? 'bg-success' : 'bg-secondary' }} text-white d-flex align-items-center justify-content-center"
-                                style="width: 30px; height: 30px;">
-                                <i class="fas fa-home"></i>
-                            </div>
-                        </div>
-
-                        <div class="position-absolute top-0 start-100 translate-middle">
-                            <div class="rounded-circle {{ $order->progress >= 5 ? 'bg-success' : 'bg-secondary' }} text-white d-flex align-items-center justify-content-center"
-                                style="width: 30px; height: 30px;">
-                                <i class="fas fa-check-double"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-flex justify-content-between mt-4 text-center">
-                        <div>
-                            <div class="small text-muted">Order Placed</div>
-                            <div class="small">{{ $order->created_at->format('d M Y') }}</div>
-                        </div>
-                        <div>
-                            <div class="small text-muted">Processing</div>
-                            <div class="small">
-                                {{ $order->processing_at ? $order->processing_at->format('d M Y') : '-' }}</div>
-                        </div>
-                        <div>
-                            <div class="small text-muted">Shipped</div>
-                            <div class="small">{{ $order->shipped_at ? $order->shipped_at->format('d M Y') : '-' }}
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-muted">Delivered</div>
-                            <div class="small">{{ $order->delivered_at ? $order->delivered_at->format('d M Y') : '-' }}
-                            </div>
-                        </div>
-                        <div>
-                            <div class="small text-muted">Completed</div>
-                            <div class="small">{{ $order->completed_at ? $order->completed_at->format('d M Y') : '-' }}
-                            </div>
-                        </div>
-                    </div>
-
-                    @if($order->status === 'delivered' && !$order->is_completed)
-                    <div class="d-grid mt-4">
-                        <form action="{{ route('orders.complete', $order) }}" method="POST">
-                            @csrf
-                            <button type="submit" class="btn btn-success">
-                                <i class="fas fa-check-circle me-1"></i> Confirm Order Received
-                            </button>
-                        </form>
-                    </div>
-                    @endif
-
-                    @if($order->status === 'new' || $order->status === 'processing')
-                    <div class="d-grid mt-4">
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
-                            data-bs-target="#cancelOrderModal">
-                            <i class="fas fa-times-circle me-1"></i> Cancel Order
-                        </button>
+    <div class="row">
+        <!-- Product Images -->
+        <div class="col-md-6 mb-4">
+            <div class="card border-0">
+                <!-- Main Product Image -->
+                <div class="text-center mb-3">
+                    @if($product->image)
+                    <img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}"
+                        class="img-fluid rounded shadow-sm" style="max-height: 400px; object-fit: cover;">
+                    @else
+                    <div class="bg-light d-flex align-items-center justify-content-center rounded"
+                        style="height: 400px;">
+                        <i class="fas fa-image fa-3x text-muted"></i>
                     </div>
                     @endif
                 </div>
-            </div>
 
-            <!-- Order Items -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-store me-2"></i>
-                        <h5 class="mb-0">{{ $order->store->name }}</h5>
+                <!-- Additional Images (if any) -->
+                @if($product->images && count($product->images) > 0)
+                <div class="row g-2">
+                    @foreach($product->images as $image)
+                    <div class="col-3">
+                        <img src="{{ Storage::url($image) }}" alt="{{ $product->name }}"
+                            class="img-fluid rounded shadow-sm cursor-pointer" onclick="changeMainImage(this.src)">
                     </div>
-                </div>
-                <div class="card-body">
-                    @foreach($order->items as $item)
-                    <div class="row align-items-center mb-3">
-                        <div class="col-auto">
-                            <img src="{{ $item->product->image_url ?? asset('images/product-default.jpg') }}"
-                                alt="{{ $item->product->name }}" class="img-thumbnail"
-                                style="width: 80px; height: 80px; object-fit: cover;">
-                        </div>
-
-                        <div class="col">
-                            <h6 class="mb-1">{{ $item->product->name }}</h6>
-                            <p class="text-muted mb-0">{{ $item->quantity }} x Rp
-                                {{ number_format($item->price, 0, ',', '.') }}</p>
-                        </div>
-
-                        <div class="col-auto">
-                            <span class="fw-bold">Rp {{ number_format($item->subtotal, 0, ',', '.') }}</span>
-                        </div>
-                    </div>
-
-                    @if(!$loop->last)
-                    <hr>
-                    @endif
                     @endforeach
                 </div>
+                @endif
             </div>
+        </div>
 
-            <!-- Shipping Information -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i> Shipping Information</h5>
+        <!-- Product Details -->
+        <div class="col-md-6">
+            <div class="product-details">
+                <!-- Store Info -->
+                <div class="mb-3">
+                    <a href="" class="text-decoration-none">
+                        <span class="badge bg-primary">
+                            <i class="fas fa-store me-1"></i>{{ $product->seller->store->name }}
+                        </span>
+                    </a>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Recipient</h6>
-                            <p class="mb-1">{{ $order->shipping_address->recipient_name }}</p>
-                            <p class="mb-1">{{ $order->shipping_address->phone }}</p>
-                            <p class="mb-0">
-                                {{ $order->shipping_address->address }}, {{ $order->shipping_address->city }},
-                                {{ $order->shipping_address->province }}, {{ $order->shipping_address->postal_code }}
-                            </p>
+
+                <!-- Product Name -->
+                <h1 class="h2 mb-3">{{ $product->name }}</h1>
+
+                <!-- Product Price -->
+                <div class="mb-3">
+                    <span class="h3 text-primary fw-bold">
+                        Rp {{ number_format($product->price, 0, ',', '.') }}
+                    </span>
+                    @if($product->original_price && $product->original_price > $product->price)
+                    <span class="text-muted text-decoration-line-through ms-2">
+                        Rp {{ number_format($product->original_price, 0, ',', '.') }}
+                    </span>
+                    <span class="badge bg-danger ms-2">
+                        {{ round((($product->original_price - $product->price) / $product->original_price) * 100) }}%
+                        OFF
+                    </span>
+                    @endif
+                </div>
+
+                <!-- Product Rating & Reviews -->
+                <div class="mb-3">
+                    <div class="d-flex align-items-center">
+                        <div class="text-warning me-2">
+                            @for($i = 1; $i <= 5; $i++) @if($i <=floor($product->average_rating ?? 0))
+                                <i class="fas fa-star"></i>
+                                @elseif($i <= ($product->average_rating ?? 0))
+                                    <i class="fas fa-star-half-alt"></i>
+                                    @else
+                                    <i class="far fa-star"></i>
+                                    @endif
+                                    @endfor
+                        </div>
+                        <span class="text-muted">
+                            ({{ $product->reviews_count ?? 0 }} reviews)
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Stock Status -->
+                <div class="mb-3">
+                    @if($product->stock > 0)
+                    <span class="badge bg-success">
+                        <i class="fas fa-check me-1"></i>In Stock ({{ $product->stock }} available)
+                    </span>
+                    @else
+                    <span class="badge bg-danger">
+                        <i class="fas fa-times me-1"></i>Out of Stock
+                    </span>
+                    @endif
+                </div>
+
+                <!-- Product Description -->
+                @if($product->description)
+                <div class="mb-4">
+                    <h5>Description</h5>
+                    <div class="text-muted">
+                        {!! nl2br(e($product->description)) !!}
+                    </div>
+                </div>
+                @endif
+
+                <!-- Add to Cart Form -->
+                @if($product->stock > 0)
+                <form action="{{ route('cart.add') }}" method="POST" class="mb-4" x-data="{ quantity: 1 }">
+                    @csrf
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-auto">
+                            <label for="quantity" class="form-label">Quantity</label>
+                            <div class="input-group" style="width: 120px;">
+                                <button type="button" class="btn btn-outline-secondary"
+                                    @click="quantity = Math.max(1, quantity - 1)">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" class="form-control text-center" name="quantity" x-model="quantity"
+                                    min="1" max="{{ $product->stock }}" value="1">
+                                <button type="button" class="btn btn-outline-secondary"
+                                    @click="quantity = Math.min({{ $product->stock }}, quantity + 1)">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-cart-plus me-2"></i>Add to Cart
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                @endif
+
+                <!-- Action Buttons -->
+                <div class="row g-2 mb-4">
+                    <div class="col-6">
+                        <button class="btn btn-outline-danger w-100" onclick="toggleWishlist({{ $product->id }})">
+                            <i class="far fa-heart me-1"></i>Add to Wishlist
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button class="btn btn-outline-primary w-100" onclick="shareProduct()">
+                            <i class="fas fa-share-alt me-1"></i>Share
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Product Details -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0">Product Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-sm-4"><strong>Category:</strong></div>
+                            <div class="col-sm-8">{{ $product->category->name ?? 'Uncategorized' }}</div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-4"><strong>SKU:</strong></div>
+                            <div class="col-sm-8">{{ $product->sku ?? 'N/A' }}</div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-4"><strong>Weight:</strong></div>
+                            <div class="col-sm-8">{{ $product->weight ?? 'N/A' }} gr</div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-sm-4"><strong>Condition:</strong></div>
+                            <div class="col-sm-8">
+                                <span class="badge bg-success">{{ $product->condition ?? 'New' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Related Products -->
+    @if($relatedProducts && $relatedProducts->count() > 0)
+    <div class="mt-5">
+        <h3 class="mb-4">Related Products</h3>
+        <div class="row g-4">
+            @foreach($relatedProducts as $relatedProduct)
+            <div class="col-lg-3 col-md-4 col-sm-6">
+                <div class="card h-100 shadow-sm">
+                    <div class="position-relative">
+                        @if($relatedProduct->image)
+                        <img src="{{ Storage::url($relatedProduct->image) }}" class="card-img-top"
+                            alt="{{ $relatedProduct->name }}" style="height: 200px; object-fit: cover;">
+                        @else
+                        <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="fas fa-image fa-2x text-muted"></i>
+                        </div>
+                        @endif
+
+                        @if($relatedProduct->original_price && $relatedProduct->original_price > $relatedProduct->price)
+                        <span class="position-absolute top-0 start-0 badge bg-danger m-2">
+                            SALE
+                        </span>
+                        @endif
+                    </div>
+
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title">
+                            <a href="{{ route('products.show', $relatedProduct->slug) }}"
+                                class="text-decoration-none text-dark">
+                                {{ Str::limit($relatedProduct->name, 50) }}
+                            </a>
+                        </h6>
+
+                        <div class="text-muted small mb-2">
+                            {{ $relatedProduct->store->name }}
                         </div>
 
-                        <div class="col-md-6">
-                            <h6>Shipping Method</h6>
-                            <p class="mb-1">Regular Shipping</p>
-                            <p class="mb-0">Estimated delivery: 2-3 days</p>
-
-                            @if($order->tracking_number)
-                            <h6 class="mt-3">Tracking Number</h6>
-                            <p class="mb-0">{{ $order->tracking_number }}</p>
+                        <div class="mt-auto">
+                            <div class="fw-bold text-primary">
+                                Rp {{ number_format($relatedProduct->price, 0, ',', '.') }}
+                            </div>
+                            @if($relatedProduct->original_price && $relatedProduct->original_price >
+                            $relatedProduct->price)
+                            <div class="text-muted text-decoration-line-through small">
+                                Rp {{ number_format($relatedProduct->original_price, 0, ',', '.') }}
+                            </div>
                             @endif
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Order History -->
-            <div class="card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="fas fa-history me-2"></i> Order History</h5>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        @foreach($order->history as $history)
-                        <li class="list-group-item px-0">
-                            <div class="d-flex">
-                                <div class="flex-shrink-0">
-                                    <div class="rounded-circle bg-{{ $history->status_color }} text-white d-flex align-items-center justify-content-center"
-                                        style="width: 40px; height: 40px;">
-                                        <i class="fas fa-{{ $history->status_icon }}"></i>
-                                    </div>
-                                </div>
-                                <div class="flex-grow-1 ms-3">
-                                    <div class="d-flex justify-content-between">
-                                        <h6 class="mb-1">{{ $history->status_label }}</h6>
-                                        <small
-                                            class="text-muted">{{ $history->created_at->format('d M Y, H:i') }}</small>
-                                    </div>
-                                    <p class="mb-0">{{ $history->notes }}</p>
-                                </div>
-                            </div>
-                        </li>
-                        @endforeach
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <!-- Order Summary -->
-            <div class="card border-0 shadow-sm mb-4 sticky-top" style="top: 20px;">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Order Summary</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Order ID</span>
-                        <span class="fw-bold">#{{ $order->id }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Order Date</span>
-                        <span>{{ $order->created_at->format('d M Y, H:i') }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Payment Method</span>
-                        <span>Cash on Delivery (COD)</span>
-                    </div>
-
-                    <hr>
-
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Subtotal ({{ $order->items_count }} items)</span>
-                        <span>Rp {{ number_format($order->subtotal, 0, ',', '.') }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Shipping Fee</span>
-                        <span>Rp {{ number_format($order->shipping_fee, 0, ',', '.') }}</span>
-                    </div>
-
-                    <hr>
-
-                    <div class="d-flex justify-content-between mb-3">
-                        <span class="fw-bold">Total</span>
-                        <span class="fw-bold">Rp {{ number_format($order->total, 0, ',', '.') }}</span>
-                    </div>
-
-                    @if($order->is_completed && !$order->is_reviewed)
-                    <div class="d-grid">
-                        <a href="{{ route('reviews.create', ['order' => $order->id]) }}" class="btn btn-primary">
-                            <i class="fas fa-star me-1"></i> Write a Review
-                        </a>
-                    </div>
-                    @endif
-
-                    @if($order->status === 'delivered' || $order->status === 'completed')
-                    <div class="d-grid mt-2">
-                        <a href="{{ route('orders.invoice', $order) }}" class="btn btn-outline-primary" target="_blank">
-                            <i class="fas fa-file-invoice me-1"></i> Download Invoice
-                        </a>
-                    </div>
-                    @endif
-                </div>
-            </div>
-
-            <!-- Need Help -->
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Need Help?</h5>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ route('contact') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-headset me-1"></i> Contact Support
-                        </a>
-                        <a href="{{ route('faq') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-question-circle me-1"></i> FAQ
+                    <div class="card-footer bg-transparent">
+                        <a href="{{ route('products.show', $relatedProduct->slug) }}"
+                            class="btn btn-outline-primary btn-sm w-100">
+                            View Details
                         </a>
                     </div>
                 </div>
             </div>
+            @endforeach
         </div>
     </div>
-
-    <!-- Cancel Order Modal -->
-    <div class="modal fade" id="cancelOrderModal" tabindex="-1" aria-labelledby="cancelOrderModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form action="{{ route('orders.cancel', $order) }}" method="POST">
-                    @csrf
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="cancelOrderModalLabel">Cancel Order</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <p>Are you sure you want to cancel this order?</p>
-
-                        <div class="mb-3">
-                            <label for="cancel_reason" class="form-label">Reason for cancellation</label>
-                            <select class="form-select" id="cancel_reason" name="cancel_reason" required>
-                                <option value="">Select a reason</option>
-                                <option value="Changed my mind">Changed my mind</option>
-                                <option value="Found a better price elsewhere">Found a better price elsewhere</option>
-                                <option value="Ordered by mistake">Ordered by mistake</option>
-                                <option value="Shipping takes too long">Shipping takes too long</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3" id="otherReasonContainer" style="display: none;">
-                            <label for="other_reason" class="form-label">Please specify</label>
-                            <textarea class="form-control" id="other_reason" name="other_reason" rows="3"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="submit" class="btn btn-danger">Cancel Order</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    @endif
 </div>
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const cancelReasonSelect = document.getElementById('cancel_reason');
-        const otherReasonContainer = document.getElementById('otherReasonContainer');
+    // Change main product image
+function changeMainImage(src) {
+    document.querySelector('.img-fluid').src = src;
+}
 
-        cancelReasonSelect.addEventListener('change', function() {
-            if (this.value === 'Other') {
-                otherReasonContainer.style.display = 'block';
+// Toggle wishlist
+function toggleWishlist(productId) {
+    // Add your wishlist logic here
+    fetch(`/wishlist/toggle/${productId}`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button state
+            const button = event.target.closest('button');
+            const icon = button.querySelector('i');
+            if (data.added) {
+                icon.classList.remove('far');
+                icon.classList.add('fas');
+                button.classList.remove('btn-outline-danger');
+                button.classList.add('btn-danger');
             } else {
-                otherReasonContainer.style.display = 'none';
+                icon.classList.remove('fas');
+                icon.classList.add('far');
+                button.classList.remove('btn-danger');
+                button.classList.add('btn-outline-danger');
             }
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+// Share product
+function shareProduct() {
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ $product->name }}',
+            text: 'Check out this product: {{ $product->name }}',
+            url: window.location.href
         });
-    });
+    } else {
+        // Fallback: copy to clipboard
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            alert('Product link copied to clipboard!');
+        });
+    }
+}
 </script>
 @endpush
 @endsection
