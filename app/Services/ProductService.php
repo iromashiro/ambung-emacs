@@ -238,14 +238,14 @@ class ProductService
     }
 
     /**
-     * Get related products
+     * Get related products - FIXED VERSION
      */
     public function getRelatedProducts(Product $product, int $limit = 4)
     {
         return Product::where('status', 'active')
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
-            ->with(['seller.store', 'images'])
+            ->with(['seller.store', 'images']) // Pastikan eager loading berjalan dengan benar
             ->inRandomOrder()
             ->limit($limit)
             ->get();

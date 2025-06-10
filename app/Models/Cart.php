@@ -43,7 +43,10 @@ class Cart extends Model
 
     public static function getBySession(string $sessionId)
     {
-        return self::where('session_id', $sessionId)->with('product.store')->get();
+        return self::where('session_id', $sessionId)
+            ->whereNull('user_id')
+            ->with('product.store')
+            ->get();
     }
 
     public static function getByUser(string $userId)
@@ -51,9 +54,15 @@ class Cart extends Model
         return self::where('user_id', $userId)->with('product.store')->get();
     }
 
+    /**
+     * Merge guest cart items with user cart
+     * FIXED: Parameter order consistency
+     */
     public static function mergeGuestCart(string $sessionId, string $userId)
     {
-        $guestItems = self::where('session_id', $sessionId)->get();
+        $guestItems = self::where('session_id', $sessionId)
+            ->whereNull('user_id')
+            ->get();
 
         foreach ($guestItems as $item) {
             $existingItem = self::where('user_id', $userId)
@@ -61,11 +70,17 @@ class Cart extends Model
                 ->first();
 
             if ($existingItem) {
-                $existingItem->quantity += $item->quantity;
+                // Merge quantities with stock limit check
+                $totalQuantity = $existingItem->quantity + $item->quantity;
+                $maxStock = $item->product->stock ?? 999;
+
+                $existingItem->quantity = min($totalQuantity, $maxStock);
                 $existingItem->save();
                 $item->delete();
             } else {
+                // Transfer ownership to user
                 $item->user_id = $userId;
+                $item->session_id = null; // Clear session ID
                 $item->save();
             }
         }
@@ -74,5 +89,19 @@ class Cart extends Model
     public function getTotalAttribute()
     {
         return $this->product->price * $this->quantity;
+    }
+
+    /**
+     * Scope for getting cart items by user or session
+     */
+    public function scopeForUserOrSession($query, $userId = null, $sessionId = null)
+    {
+        if ($userId) {
+            return $query->where('user_id', $userId);
+        } elseif ($sessionId) {
+            return $query->where('session_id', $sessionId)->whereNull('user_id');
+        }
+
+        return $query->whereRaw('1 = 0'); // Return empty result
     }
 }

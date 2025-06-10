@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Cart;
 use App\Models\Product;
+use App\Models\User;
 use App\Repositories\Interfaces\CartRepositoryInterface;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
@@ -30,14 +31,23 @@ class CartService
             ->get();
     }
 
+    /**
+     * Get session cart for guest users
+     */
+    public function getSessionCart()
+    {
+        $sessionId = Session::getId();
+
+        return Cart::where('session_id', $sessionId)
+            ->whereNull('user_id')
+            ->with('product.store')
+            ->get();
+    }
+
     public function addToCart($productId, $quantity)
     {
         $userId = Auth::id();
-
-        // Check if user is logged in
-        if (!$userId) {
-            throw new \Exception('You must be logged in to add items to cart.');
-        }
+        $sessionId = Session::getId();
 
         $product = Product::findOrFail($productId);
 
@@ -47,9 +57,18 @@ class CartService
         }
 
         // Check if product already in cart
-        $cartItem = Cart::where('user_id', $userId)
-            ->where('product_id', $productId)
-            ->first();
+        if ($userId) {
+            // User is logged in - check user cart
+            $cartItem = Cart::where('user_id', $userId)
+                ->where('product_id', $productId)
+                ->first();
+        } else {
+            // Guest user - check session cart
+            $cartItem = Cart::where('session_id', $sessionId)
+                ->whereNull('user_id')
+                ->where('product_id', $productId)
+                ->first();
+        }
 
         if ($cartItem) {
             // Update quantity if product already in cart
@@ -66,21 +85,25 @@ class CartService
             // Add new cart item
             Cart::create([
                 'user_id' => $userId,
+                'session_id' => $userId ? null : $sessionId,
                 'product_id' => $productId,
                 'quantity' => $quantity
             ]);
         }
 
-        return $this->getUserCart();
+        return $userId ? $this->getUserCart() : $this->getSessionCart();
     }
 
     public function updateCartItem($cartItemId, $quantity)
     {
         $userId = Auth::id();
+        $sessionId = Session::getId();
         $cartItem = Cart::findOrFail($cartItemId);
 
-        // Ensure cart belongs to user
-        if ($cartItem->user_id !== $userId) {
+        // Ensure cart belongs to user or session
+        if ($userId && $cartItem->user_id !== $userId) {
+            throw new \Exception('Unauthorized access to cart.');
+        } elseif (!$userId && $cartItem->session_id !== $sessionId) {
             throw new \Exception('Unauthorized access to cart.');
         }
 
@@ -92,36 +115,44 @@ class CartService
         $cartItem->quantity = $quantity;
         $cartItem->save();
 
-        return $this->getUserCart();
+        return $userId ? $this->getUserCart() : $this->getSessionCart();
     }
 
     public function removeCartItem($cartItemId)
     {
         $userId = Auth::id();
+        $sessionId = Session::getId();
         $cartItem = Cart::findOrFail($cartItemId);
 
-        // Ensure cart belongs to user
-        if ($cartItem->user_id !== $userId) {
+        // Ensure cart belongs to user or session
+        if ($userId && $cartItem->user_id !== $userId) {
+            throw new \Exception('Unauthorized access to cart.');
+        } elseif (!$userId && $cartItem->session_id !== $sessionId) {
             throw new \Exception('Unauthorized access to cart.');
         }
 
         $cartItem->delete();
 
-        return $this->getUserCart();
+        return $userId ? $this->getUserCart() : $this->getSessionCart();
     }
 
     public function removeMultipleItems(array $cartItemIds)
     {
         $userId = Auth::id();
+        $sessionId = Session::getId();
 
-        if (!$userId) {
-            return collect();
+        if ($userId) {
+            // Validate all items belong to user's cart
+            $cartItems = Cart::whereIn('id', $cartItemIds)
+                ->where('user_id', $userId)
+                ->get();
+        } else {
+            // Validate all items belong to session cart
+            $cartItems = Cart::whereIn('id', $cartItemIds)
+                ->where('session_id', $sessionId)
+                ->whereNull('user_id')
+                ->get();
         }
-
-        // Validate all items belong to user's cart
-        $cartItems = Cart::whereIn('id', $cartItemIds)
-            ->where('user_id', $userId)
-            ->get();
 
         if ($cartItems->count() !== count($cartItemIds)) {
             throw new \Exception('Some cart items not found or do not belong to your cart.');
@@ -130,18 +161,19 @@ class CartService
         // Delete the items
         Cart::whereIn('id', $cartItemIds)->delete();
 
-        return $this->getUserCart();
+        return $userId ? $this->getUserCart() : $this->getSessionCart();
     }
 
     public function clearCart()
     {
         $userId = Auth::id();
+        $sessionId = Session::getId();
 
-        if (!$userId) {
-            return collect();
+        if ($userId) {
+            Cart::where('user_id', $userId)->delete();
+        } else {
+            Cart::where('session_id', $sessionId)->whereNull('user_id')->delete();
         }
-
-        Cart::where('user_id', $userId)->delete();
 
         return collect();
     }
@@ -149,20 +181,21 @@ class CartService
     protected function validateCartOwnership($cartItem)
     {
         $userId = Auth::id();
+        $sessionId = Session::getId();
 
         if ($userId && $cartItem->user_id !== $userId) {
+            throw new \Exception('Unauthorized access to cart.');
+        } elseif (!$userId && $cartItem->session_id !== $sessionId) {
             throw new \Exception('Unauthorized access to cart.');
         }
     }
 
     /**
      * Get the total price of items in the cart
-     *
-     * @return float
      */
     public function getTotalPrice()
     {
-        $cartItems = $this->getUserCart();
+        $cartItems = Auth::id() ? $this->getUserCart() : $this->getSessionCart();
 
         if ($cartItems->isEmpty()) {
             return 0;
@@ -175,9 +208,6 @@ class CartService
 
     /**
      * Get the subtotal price of specific cart items
-     *
-     * @param array $cartItemIds
-     * @return float
      */
     public function getSubtotalForItems(array $cartItemIds)
     {
@@ -189,7 +219,7 @@ class CartService
                 if ($userId) {
                     $query->where('user_id', $userId);
                 } else {
-                    $query->where('session_id', $sessionId);
+                    $query->where('session_id', $sessionId)->whereNull('user_id');
                 }
             })
             ->with('product')
@@ -202,12 +232,10 @@ class CartService
 
     /**
      * Get cart items count
-     *
-     * @return int
      */
     public function getCartItemsCount()
     {
-        $cartItems = $this->getUserCart();
+        $cartItems = Auth::id() ? $this->getUserCart() : $this->getSessionCart();
 
         if ($cartItems->isEmpty()) {
             return 0;
@@ -218,12 +246,10 @@ class CartService
 
     /**
      * Get cart items grouped by store
-     *
-     * @return array
      */
     public function getCartItemsByStore()
     {
-        $cartItems = $this->getUserCart();
+        $cartItems = Auth::id() ? $this->getUserCart() : $this->getSessionCart();
 
         if ($cartItems->isEmpty()) {
             return [];
@@ -246,29 +272,28 @@ class CartService
 
     /**
      * Get specific cart items by IDs
-     *
-     * @param array $cartItemIds
-     * @return \Illuminate\Database\Eloquent\Collection
      */
     public function getCartItemsById(array $cartItemIds)
     {
         $userId = Auth::id();
+        $sessionId = Session::getId();
 
-        if (!$userId) {
-            return collect();
+        if ($userId) {
+            return Cart::whereIn('id', $cartItemIds)
+                ->where('user_id', $userId)
+                ->with('product.store')
+                ->get();
+        } else {
+            return Cart::whereIn('id', $cartItemIds)
+                ->where('session_id', $sessionId)
+                ->whereNull('user_id')
+                ->with('product.store')
+                ->get();
         }
-
-        return Cart::whereIn('id', $cartItemIds)
-            ->where('user_id', $userId)
-            ->with('product.store')
-            ->get();
     }
 
     /**
      * Get specific cart items grouped by store
-     *
-     * @param array $cartItemIds
-     * @return array
      */
     public function getCartItemsByStoreFiltered(array $cartItemIds)
     {
@@ -295,9 +320,6 @@ class CartService
 
     /**
      * Validate cart items availability and stock
-     *
-     * @param array $cartItemIds
-     * @return array
      */
     public function validateCartItems(array $cartItemIds)
     {
@@ -331,9 +353,6 @@ class CartService
 
     /**
      * Calculate shipping fee for cart items
-     *
-     * @param array $cartItemIds
-     * @return float
      */
     public function calculateShippingFee(array $cartItemIds)
     {
@@ -348,13 +367,10 @@ class CartService
 
     /**
      * Get cart summary
-     *
-     * @param array|null $cartItemIds
-     * @return array
      */
     public function getCartSummary()
     {
-        $cart = $this->getUserCart();
+        $cart = Auth::id() ? $this->getUserCart() : $this->getSessionCart();
 
         if ($cart->isEmpty()) {
             return [
@@ -380,14 +396,112 @@ class CartService
     }
 
     /**
-     * Merge guest cart with user cart after login
-     *
-     * @param string $sessionId
-     * @param string $userId
-     * @return void
+     * Merge session cart with user cart after login - METHOD YANG HILANG
+     * This method is called from LoginController after successful login
+     */
+    public function mergeSessionCartWithUserCart(User $user)
+    {
+        try {
+            $sessionId = Session::getId();
+
+            // Get guest cart items from session
+            $guestCartItems = Cart::where('session_id', $sessionId)
+                ->whereNull('user_id')
+                ->get();
+
+            if ($guestCartItems->isEmpty()) {
+                return; // No guest cart to merge
+            }
+
+            foreach ($guestCartItems as $guestItem) {
+                // Check if user already has this product in their cart
+                $existingCartItem = Cart::where('user_id', $user->id)
+                    ->where('product_id', $guestItem->product_id)
+                    ->first();
+
+                if ($existingCartItem) {
+                    // Merge quantities (respecting stock limits)
+                    $totalQuantity = $existingCartItem->quantity + $guestItem->quantity;
+                    $maxStock = $guestItem->product->stock;
+
+                    // Set to maximum available stock if total exceeds stock
+                    $existingCartItem->quantity = min($totalQuantity, $maxStock);
+                    $existingCartItem->save();
+
+                    // Delete guest cart item
+                    $guestItem->delete();
+                } else {
+                    // Transfer guest cart item to user
+                    $guestItem->user_id = $user->id;
+                    $guestItem->session_id = null; // Clear session_id
+                    $guestItem->save();
+                }
+            }
+
+            // Log successful merge
+            \Log::info("Cart merged successfully for user {$user->id}");
+        } catch (\Exception $e) {
+            // Log error but don't break login process
+            \Log::error("Error merging cart for user {$user->id}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Merge guest cart with user cart - ALTERNATIVE METHOD
+     * This method can be used as alternative with different parameters
      */
     public function mergeGuestCart($userId)
     {
-        Cart::mergeGuestCart($userId);
+        try {
+            $sessionId = Session::getId();
+            Cart::mergeGuestCart($sessionId, $userId);
+
+            \Log::info("Guest cart merged successfully for user {$userId}");
+        } catch (\Exception $e) {
+            \Log::error("Error merging guest cart for user {$userId}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Clean up old session carts (can be called by scheduled task)
+     */
+    public function cleanupOldSessionCarts($daysOld = 7)
+    {
+        $cutoffDate = now()->subDays($daysOld);
+
+        $deletedCount = Cart::whereNotNull('session_id')
+            ->whereNull('user_id')
+            ->where('created_at', '<', $cutoffDate)
+            ->delete();
+
+        \Log::info("Cleaned up {$deletedCount} old session cart items");
+
+        return $deletedCount;
+    }
+
+    /**
+     * Get session cart items grouped by store
+     */
+    public function getSessionCartByStore()
+    {
+        $cartItems = $this->getSessionCart();
+
+        if ($cartItems->isEmpty()) {
+            return [];
+        }
+
+        $groupedItems = [];
+
+        foreach ($cartItems as $item) {
+            $storeName = $item->product->store->name;
+
+            if (!isset($groupedItems[$storeName])) {
+                $groupedItems[$storeName] = [];
+            }
+
+            $groupedItems[$storeName][] = $item;
+        }
+
+        return $groupedItems;
     }
 }

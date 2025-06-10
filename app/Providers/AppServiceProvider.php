@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\View;
 use App\Models\Category;
+use App\Services\CartService;
 use Illuminate\Support\Facades\Blade;
 
 class AppServiceProvider extends ServiceProvider
@@ -83,6 +84,10 @@ class AppServiceProvider extends ServiceProvider
                     'unreadNotifications' => $unreadNotifications
                 ]);
             }
+        });
+
+        View::composer('*', function ($view) {
+            $view->with('cartCount', app(CartService::class)->getCartItemsCount());
         });
 
         // Custom Blade directives

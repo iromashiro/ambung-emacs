@@ -203,30 +203,55 @@ function addToCart(productId) {
     fetch('/cart/add', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            'Content-Type'   : 'application/json',
+            'Accept'         : 'application/json',     // <– penting
+            'X-Requested-With': 'XMLHttpRequest',      // <– penting
+            'X-CSRF-TOKEN'   : document
+                                .querySelector('meta[name="csrf-token"]')
+                                .content
         },
+        credentials: 'same-origin',                    // bawa session cookie
         body: JSON.stringify({
             product_id: productId,
-            quantity: 1
+            quantity  : 1
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update cart count in header
-            updateCartCount();
-            // Show success message
-            alert('Product added to cart!');
+    .then(async (response) => {
+        if (!response.ok) {          // 401 / 419 / 422, dll.
+            // Coba ambil text agar mudah di-debug
+            const text = await response.text();
+            console.error('Non-200 response', response.status, text);
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            // Server malah balas HTML ⇒ kemungkinan redirect/login
+            const text = await response.text();
+            console.error('HTML received:', text.substring(0, 200));
+            throw new Error('NON_JSON_RESPONSE');
+        }
+
+        return response.json();
+    })
+    .then(({ success, message, cart_count }) => {
+        if (success) {
+            updateCartCount(cart_count);
+            alert(message ?? 'Produk masuk keranjang!');
         } else {
-            alert(data.message || 'Failed to add product to cart');
+            alert(message ?? 'Gagal menambah produk');
         }
     })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred. Please try again.');
+    .catch((err) => {
+        if (err.message === 'NON_JSON_RESPONSE') {
+            // Arahkan user login atau tampilkan modal
+            window.location.href = '{{ route('login') }}';
+        } else {
+            alert('Terjadi kesalahan, coba lagi');
+        }
     });
 }
+
 
 function updateCartCount() {
     fetch('/cart/count')

@@ -97,7 +97,7 @@ class ProductController extends Controller
             abort(404, 'Product not found');
         }
 
-        // Get related products (same category)
+        // Get related products (same category) - FIXED
         $relatedProducts = $this->getRelatedProducts($product, 4);
 
         return view('web.products.show', compact('product', 'relatedProducts'));
@@ -186,13 +186,14 @@ class ProductController extends Controller
     }
 
     /**
-     * Get related products
+     * Get related products - FIXED
      */
     private function getRelatedProducts(Product $product, int $limit = 4)
     {
         return Product::where('status', 'active')
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
+            ->with(['seller.store', 'images']) // Pastikan relasi dimuat dengan benar
             ->inRandomOrder()
             ->limit($limit)
             ->get();

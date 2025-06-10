@@ -196,7 +196,7 @@
         </div>
     </div>
 
-    <!-- Related Products -->
+    <!-- Related Products - SECTION YANG DIPERBAIKI -->
     @if($relatedProducts && $relatedProducts->count() > 0)
     <div class="mt-5">
         <h3 class="mb-4">Related Products</h3>
@@ -229,8 +229,13 @@
                             </a>
                         </h6>
 
+                        <!-- FIXED: Pengecekan relasi store yang lebih aman -->
                         <div class="text-muted small mb-2">
-                            {{ $relatedProduct->store->name }}
+                            @if($relatedProduct->seller && $relatedProduct->seller->store)
+                            {{ $relatedProduct->seller->store->name }}
+                            @else
+                            <span class="text-muted">Store not available</span>
+                            @endif
                         </div>
 
                         <div class="mt-auto">
