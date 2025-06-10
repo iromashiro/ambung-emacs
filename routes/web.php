@@ -20,7 +20,7 @@ use App\Http\Controllers\Web\ProductController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
-Route::get('/', [ProductController::class, 'home'])->name('home');
+Route::get('/', [ProductController::class, 'index'])->name('home');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
 Route::get('/stores', [StoreController::class, 'index'])->name('stores.index');

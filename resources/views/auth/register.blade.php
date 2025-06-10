@@ -95,17 +95,6 @@
                             </div>
                         </div>
 
-                        <div class="mt-4">
-                            <div class="form-check">
-                                <input class="form-check-input @error('terms') is-invalid @enderror" type="checkbox"
-                                    id="terms" name="terms" required>
-                                <label class="form-check-label" for="terms">
-                                    I agree to the <a href="{{ route('terms') }}" target="_blank">Terms of Service</a>
-                                    and <a href="{{ route('privacy') }}" target="_blank">Privacy Policy</a>
-                                </label>
-                            </div>
-                        </div>
-
                         <div class="d-grid mt-4">
                             <button type="submit" class="btn btn-primary py-2">Create Account</button>
                         </div>

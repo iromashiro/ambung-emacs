@@ -23,9 +23,10 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        // Validate input
+        // Validate input - handle both 'category' and 'categories'
         $validated = $request->validate([
             'search' => 'nullable|string|max:255',
+            'category' => 'nullable|integer|exists:categories,id', // Handle single category
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
             'min_price' => 'nullable|numeric|min:0',
@@ -35,10 +36,22 @@ class ProductController extends Controller
             'per_page' => 'nullable|integer|min:6|max:60'
         ]);
 
+        // Build category IDs array - handle both single category and multiple categories
+        $categoryIds = null;
+
+        // Check for single category parameter first (dari homepage)
+        if (!empty($validated['category'])) {
+            $categoryIds = [$validated['category']];
+        }
+        // Then check for multiple categories (dari filter form)
+        elseif (!empty($validated['categories'])) {
+            $categoryIds = $validated['categories'];
+        }
+
         // Build filters array that matches ProductService expectations
         $filters = array_filter([
             'search' => $validated['search'] ?? null,
-            'category_ids' => $validated['categories'] ?? null, // Note: category_ids not category_id
+            'category_ids' => $categoryIds, // Use the processed category IDs
             'min_price' => $validated['min_price'] ?? null,
             'max_price' => $validated['max_price'] ?? null,
             'sort' => $validated['sort'] ?? 'newest',
@@ -61,10 +74,14 @@ class ProductController extends Controller
         // Get price range
         $priceRange = $this->productService->getProductPriceRange();
 
+        // Pass selected categories to view for maintaining filter state
+        $selectedCategories = $categoryIds ?? [];
+
         return view('web.products.index', compact(
             'products',
             'categories',
-            'priceRange'
+            'priceRange',
+            'selectedCategories'
         ));
     }
 
