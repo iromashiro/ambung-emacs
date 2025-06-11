@@ -16,11 +16,15 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_id')->constrained()->onDelete('cascade');
             $table->integer('quantity');
+            $table->string('session_id')->nullable()->after('user_id');
             $table->timestamps();
 
             // Indexes for performance
             $table->unique(['user_id', 'product_id']);
-            $table->index('user_id');
+            // Add index for better query performance
+            $table->index(['session_id']);
+            $table->index(['user_id']);
+            $table->index(['session_id', 'user_id']);
         });
     }
 
