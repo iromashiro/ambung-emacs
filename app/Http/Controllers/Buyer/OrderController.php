@@ -3,70 +3,74 @@
 namespace App\Http\Controllers\Buyer;
 
 use App\Http\Controllers\Controller;
-use App\Services\OrderService;
-use Illuminate\Http\RedirectResponse;
+use App\Models\Order;
 use Illuminate\Http\Request;
-use Illuminate\View\View;
 
 class OrderController extends Controller
 {
-    protected $orderService;
-
-    public function __construct(OrderService $orderService)
-    {
-        $this->orderService = $orderService;
-    }
-
     /**
-     * Display a listing of orders.
+     * Display a listing of the user's orders.
      */
-    public function index(Request $request): View
+    public function index()
     {
-        $perPage = $request->input('per_page', 10);
-        $orders = $this->orderService->getOrdersByBuyer(auth()->user(), $perPage);
-        
-        return view('buyer.orders.index', [
-            'orders' => $orders,
-        ]);
+        $orders = Order::where('buyer_id', auth()->id())
+            ->with(['items.product'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+
+        return view('buyer.orders.index', compact('orders'));
     }
 
     /**
      * Display the specified order.
      */
-    public function show(string $id): View
+    public function show(Order $order)
     {
-        $order = $this->orderService->getOrderById($id);
-        
-        // Check if user has permission to view this order
-        if (auth()->id() !== $order->buyer_id) {
-            abort(403, 'You do not have permission to view this order');
+        // Ensure user can only see their own orders
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403, 'Unauthorized access to order');
         }
-        
-        return view('buyer.orders.show', [
-            'order' => $order,
-        ]);
+
+        $order->load(['items.product', 'buyer']);
+
+        return view('buyer.orders.show', compact('order'));
     }
 
     /**
-     * Cancel an order.
+     * Cancel the specified order.
      */
-    public function cancel(string $id): RedirectResponse
+    public function cancel(Order $order)
     {
-        $order = $this->orderService->getOrderById($id);
-        
-        // Check if user has permission to cancel this order
-        if (auth()->id() !== $order->buyer_id) {
-            abort(403, 'You do not have permission to cancel this order');
+        // Ensure user can only cancel their own orders
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403, 'Unauthorized access to order');
         }
-        
-        try {
-            $this->orderService->cancelOrder($order, auth()->user());
-            
-            return redirect()->route('buyer.orders.show', $order->id)
-                ->with('success', 'Order canceled successfully');
-        } catch (\Exception $e) {
-            return redirect()->route('buyer.orders.show', $order->id)
-                ->with('error', $e->getMessage());
+
+        if (!$order->canBeCanceled()) {
+            return back()->with('error', 'This order cannot be canceled');
         }
+
+        $order->update(['status' => 'canceled']);
+
+        return back()->with('success', 'Order has been canceled successfully');
+    }
+
+    /**
+     * Confirm delivery of the order.
+     */
+    public function confirmDelivery(Order $order)
+    {
+        // Ensure user can only confirm their own orders
+        if ($order->buyer_id !== auth()->id()) {
+            abort(403, 'Unauthorized access to order');
+        }
+
+        if ($order->status !== 'dispatched') {
+            return back()->with('error', 'Only dispatched orders can be confirmed as delivered');
+        }
+
+        $order->update(['status' => 'delivered']);
+
+        return back()->with('success', 'Order delivery has been confirmed');
     }
 }

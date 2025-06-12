@@ -52,6 +52,7 @@ Route::middleware(['auth', 'role:buyer'])->group(function () {
 
     Route::get('/orders', [BuyerOrderController::class, 'index'])->name('buyer.orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->name('buyer.orders.show');
+    Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->name('buyer.orders.cancel');
     Route::patch('/orders/{order}/confirm', [BuyerOrderController::class, 'confirmDelivery'])->name('buyer.orders.confirm');
 });
 
