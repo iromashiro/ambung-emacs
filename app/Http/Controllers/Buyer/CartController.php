@@ -38,23 +38,19 @@ class CartController extends Controller
 
     public function add(Request $request)
     {
-        // Validate request
         $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1'
         ]);
 
         try {
-            // Add to cart
             $this->cartService->addToCart(
                 $request->product_id,
                 $request->quantity
             );
 
-            // Get updated cart count
             $cartCount = $this->cartService->getCartItemsCount();
 
-            // Log success for debugging
             Log::info('Product added to cart successfully', [
                 'product_id' => $request->product_id,
                 'quantity' => $request->quantity,
@@ -63,7 +59,6 @@ class CartController extends Controller
                 'cart_count' => $cartCount
             ]);
 
-            // ALWAYS return JSON response for AJAX requests
             if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => true,
@@ -74,10 +69,8 @@ class CartController extends Controller
                 ]);
             }
 
-            // Fallback for regular form submission
             return redirect()->back()->with('success', 'Product added to cart successfully');
         } catch (\Exception $e) {
-            // Log error for debugging
             Log::error('Error adding product to cart', [
                 'product_id' => $request->product_id,
                 'quantity' => $request->quantity,
@@ -86,7 +79,6 @@ class CartController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            // ALWAYS return JSON response for AJAX requests
             if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -96,23 +88,29 @@ class CartController extends Controller
                 ]);
             }
 
-            // Fallback for regular form submission
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
     public function update(Request $request)
     {
+        // FIXED: Accept both URL parameter and request body
+        $cartItemId = $request->route('cartItem') ?? $request->input('cart_item_id');
+
         $request->validate([
-            'cart_item_id' => 'required|exists:carts,id',
             'quantity' => 'required|integer|min:1'
         ]);
 
+        // Additional validation for cart_item_id if not in route
+        if (!$cartItemId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cart item ID is required'
+            ], 400);
+        }
+
         try {
-            $this->cartService->updateCartItem(
-                $request->cart_item_id,
-                $request->quantity
-            );
+            $this->cartService->updateCartItem($cartItemId, $request->quantity);
 
             if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 $totalPrice = $this->cartService->getTotalPrice();
@@ -144,12 +142,18 @@ class CartController extends Controller
 
     public function remove(Request $request)
     {
-        $request->validate([
-            'cart_item_id' => 'required|exists:carts,id'
-        ]);
+        // FIXED: Accept both URL parameter and request body
+        $cartItemId = $request->route('cartItem') ?? $request->input('cart_item_id');
+
+        if (!$cartItemId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cart item ID is required'
+            ], 400);
+        }
 
         try {
-            $this->cartService->removeCartItem($request->cart_item_id);
+            $this->cartService->removeCartItem($cartItemId);
 
             if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 $totalPrice = $this->cartService->getTotalPrice();
@@ -165,6 +169,44 @@ class CartController extends Controller
             }
 
             return redirect()->back()->with('success', 'Item removed from cart');
+        } catch (\Exception $e) {
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage()
+                ], 400, [
+                    'Content-Type' => 'application/json'
+                ]);
+            }
+
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+    public function removeMultiple(Request $request)
+    {
+        $request->validate([
+            'cart_item_ids' => 'required|array',
+            'cart_item_ids.*' => 'integer|exists:carts,id'
+        ]);
+
+        try {
+            $this->cartService->removeMultipleItems($request->cart_item_ids);
+
+            if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
+                $totalPrice = $this->cartService->getTotalPrice();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Items removed from cart',
+                    'total_price' => $totalPrice,
+                    'cart_count' => $this->cartService->getCartItemsCount()
+                ], 200, [
+                    'Content-Type' => 'application/json'
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Items removed from cart');
         } catch (\Exception $e) {
             if ($request->ajax() || $request->wantsJson() || $request->expectsJson()) {
                 return response()->json([

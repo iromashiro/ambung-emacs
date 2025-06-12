@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -12,7 +11,7 @@ class Cart extends Model
 
     protected $fillable = [
         'user_id',
-        'session_id',
+        'session_id',  // Add this to fillable
         'product_id',
         'quantity',
     ];
@@ -31,34 +30,55 @@ class Cart extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function getSubtotalAttribute(): int
+    /**
+     * Get subtotal for this cart item
+     */
+    public function getSubtotalAttribute(): float
     {
-        return $this->product->price_int * $this->quantity;
+        return $this->product->price * $this->quantity;
     }
 
+    /**
+     * Get formatted subtotal
+     */
     public function getFormattedSubtotalAttribute(): string
     {
-        return 'Rp ' . number_format($this->getSubtotalAttribute() / 100, 0, ',', '.');
+        return 'Rp ' . number_format($this->getSubtotalAttribute(), 0, ',', '.');
     }
 
+    /**
+     * Get total (alias for subtotal)
+     */
+    public function getTotalAttribute(): float
+    {
+        return $this->getSubtotalAttribute();
+    }
+
+    /**
+     * Get cart items by session ID (for guest users)
+     */
     public static function getBySession(string $sessionId)
     {
         return self::where('session_id', $sessionId)
             ->whereNull('user_id')
-            ->with('product.store')
+            ->with(['product.seller.store', 'product.images'])
             ->get();
     }
 
-    public static function getByUser(string $userId)
+    /**
+     * Get cart items by user ID (for logged in users)
+     */
+    public static function getByUser(int $userId)
     {
-        return self::where('user_id', $userId)->with('product.store')->get();
+        return self::where('user_id', $userId)
+            ->with(['product.seller.store', 'product.images'])
+            ->get();
     }
 
     /**
-     * Merge guest cart items with user cart
-     * FIXED: Parameter order consistency
+     * Merge guest cart items with user cart after login
      */
-    public static function mergeGuestCart(string $sessionId, string $userId)
+    public static function mergeGuestCart(string $sessionId, int $userId)
     {
         $guestItems = self::where('session_id', $sessionId)
             ->whereNull('user_id')
@@ -80,15 +100,10 @@ class Cart extends Model
             } else {
                 // Transfer ownership to user
                 $item->user_id = $userId;
-                $item->session_id = null; // Clear session ID
+                $item->session_id = null;
                 $item->save();
             }
         }
-    }
-
-    public function getTotalAttribute()
-    {
-        return $this->product->price * $this->quantity;
     }
 
     /**

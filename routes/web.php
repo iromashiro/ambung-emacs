@@ -39,15 +39,16 @@ Route::post('/register', [RegisterController::class, 'register']);
 Route::group([], function () {
     Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
     Route::post('/cart/add', [CartController::class, 'add'])->name('cart.add');
-    Route::patch('/cart/update', [CartController::class, 'update'])->name('cart.update');
-    Route::delete('/cart/remove', [CartController::class, 'remove'])->name('cart.remove');
+    Route::patch('/cart/update/{cartItem?}', [CartController::class, 'update'])->name('cart.update');
+    Route::delete('/cart/remove/{cartItem?}', [CartController::class, 'remove'])->name('cart.remove');
+    Route::delete('/cart/remove-multiple', [CartController::class, 'removeMultiple'])->name('cart.remove-multiple');
     Route::get('/cart/count', [CartController::class, 'count'])->name('cart.count');
 });
 
 // Buyer routes (require authentication and buyer role)
 Route::middleware(['auth', 'role:buyer'])->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
-    Route::post('/checkout', [CheckoutController::class, 'process'])->name('checkout.process');
+    Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.process');
 
     Route::get('/orders', [BuyerOrderController::class, 'index'])->name('buyer.orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->name('buyer.orders.show');
