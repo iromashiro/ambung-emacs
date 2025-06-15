@@ -415,7 +415,7 @@
 @endsection
 
 @if($store && $store->status === 'approved')
-@section('styles')
+@push('styles')
 <style>
     .card {
         transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
@@ -426,9 +426,10 @@
         box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
     }
 </style>
-@endsection
+@endpush
 
-@section('scripts')
+@push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
     // Prepare data with proper fallbacks
@@ -656,5 +657,5 @@ function loadSalesDataByPeriod(period) {
     */
 }
 </script>
-@endsection
+@endpush
 @endif
