@@ -186,7 +186,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <strong>Rp {{ number_format($order->total) }}</strong>
+                                        <strong>{{ $order->formatted_total }}</strong>
                                     </td>
                                     <td>
                                         @php

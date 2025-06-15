@@ -29,7 +29,7 @@
                         <div class="col-md-8">
                             <p class="mb-2">
                                 <strong>Items:</strong> {{ $order->items->count() }} items<br>
-                                <strong>Total:</strong> Rp {{ number_format($order->total_amount, 0, ',', '.') }}
+                                <strong>Total:</strong> Rp <strong>{{ $order->formatted_total }}</strong>
                             </p>
 
                             <!-- Show first few items -->

@@ -47,7 +47,15 @@ class OrderService
         return Order::whereHas('items.product', function ($q) use ($store) {
             $q->where('seller_id', $store->seller_id);
         })
-            ->with(['user', 'items.product'])
+            ->with([
+                'user',
+                'items' => function ($query) use ($store) {
+                    $query->whereHas('product', function ($q) use ($store) {
+                        $q->where('seller_id', $store->seller_id);
+                    });
+                },
+                'items.product'
+            ])
             ->orderBy('created_at', 'desc')
             ->paginate($limit);
     }

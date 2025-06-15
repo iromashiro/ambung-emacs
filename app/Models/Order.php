@@ -54,6 +54,10 @@ class Order extends Model
      */
     public function getCalculatedTotalAttribute()
     {
+        if (!$this->relationLoaded('items') || $this->items->isEmpty()) {
+            return $this->total_amount;
+        }
+
         return $this->items->sum(function ($item) {
             return $item->quantity * $item->price;
         });
@@ -72,7 +76,8 @@ class Order extends Model
      */
     public function getFormattedTotalAttribute()
     {
-        $total = $this->calculated_total ?: $this->total_amount;
+        // Prioritaskan total_amount dari database, fallback ke calculated_total
+        $total = $this->total_amount ?: $this->calculated_total;
         return 'Rp ' . number_format($total, 0, ',', '.');
     }
 
