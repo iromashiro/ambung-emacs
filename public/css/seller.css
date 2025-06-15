@@ -171,3 +171,94 @@ body {
         width: calc(100% - 250px);
     }
 }
+
+/* Custom Scrollbar for Sidebar */
+#sidebar-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 3px;
+}
+
+#sidebar-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Smooth scrolling */
+#sidebar-wrapper {
+    scroll-behavior: smooth;
+}
+
+/* Sticky header */
+.sidebar-heading.sticky-top {
+    z-index: 1020;
+}
+
+/* Menu item hover effects */
+.list-group-item-action:hover {
+    background-color: #f8f9fa;
+    border-left: 3px solid var(--bs-primary);
+}
+
+.list-group-item-action.active {
+    background-color: var(--bs-primary);
+    color: white;
+    border-left: 3px solid var(--bs-dark);
+}
+
+.list-group-item-action.active i {
+    color: white;
+}
+
+/* Badge positioning */
+.list-group-item .badge {
+    font-size: 0.7rem;
+}
+
+/* Section headers */
+.list-group-item.bg-light {
+    background-color: #f8f9fa !important;
+    font-weight: 600;
+    padding: 8px 16px;
+    border: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    #sidebar-wrapper {
+        width: 100% !important;
+        height: auto !important;
+        max-height: 70vh;
+    }
+}
+
+/* Animation for collapsible menu */
+.list-group-item-action {
+    transition: all 0.2s ease-in-out;
+}
+
+/* Notification badges animation */
+.badge {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.05);
+    }
+
+    100% {
+        transform: scale(1);
+    }
+}

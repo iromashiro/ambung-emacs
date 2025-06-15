@@ -23,49 +23,251 @@
 
     <!-- Alpine.js -->
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        /* Custom Scrollbar for Sidebar */
+        #sidebar-wrapper::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #sidebar-wrapper::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        #sidebar-wrapper::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        #sidebar-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        /* Smooth scrolling */
+        #sidebar-wrapper {
+            scroll-behavior: smooth;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        /* Sticky header */
+        .sidebar-heading.sticky-top {
+            z-index: 1020;
+        }
+
+        /* Menu item hover effects */
+        .list-group-item-action:hover {
+            background-color: #f8f9fa;
+            border-left: 3px solid var(--bs-primary);
+        }
+
+        .list-group-item-action.active {
+            background-color: var(--bs-primary);
+            color: white;
+            border-left: 3px solid var(--bs-dark);
+        }
+
+        .list-group-item-action.active i {
+            color: white;
+        }
+
+        /* Badge positioning */
+        .list-group-item .badge {
+            font-size: 0.7rem;
+        }
+
+        /* Section headers */
+        .list-group-item.bg-light {
+            background-color: #f8f9fa !important;
+            font-weight: 600;
+            padding: 8px 16px;
+            border: none;
+        }
+
+        /* Animation for badges */
+        .badge {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            #sidebar-wrapper {
+                width: 100% !important;
+                height: auto !important;
+                max-height: 70vh;
+            }
+        }
+
+        /* Animation for menu items */
+        .list-group-item-action {
+            transition: all 0.2s ease-in-out;
+        }
+    </style>
 </head>
 
 <body>
     <div class="d-flex" id="wrapper">
         <!-- Sidebar -->
-        <div class="border-end bg-white" id="sidebar-wrapper">
-            <div class="sidebar-heading border-bottom bg-primary text-white p-3">
-                <img src="{{ asset('images/logo-white.png') }}" alt="Ambung Emac" height="30">
+        <div class="bg-white border-end shadow-sm" id="sidebar-wrapper" style="width: 250px;">
+            <!-- Sidebar Heading -->
+            <div class="sidebar-heading bg-primary text-white p-3 d-flex align-items-center sticky-top">
+                <i class="fas fa-store me-2"></i>
                 <span class="ms-2">Seller Center</span>
             </div>
-            <div class="list-group list-group-flush">
+
+            <!-- Sidebar Menu with Scroll -->
+            <div class="list-group list-group-flush" style="padding-bottom: 20px;">
+                <!-- Dashboard -->
                 <a href="{{ route('seller.dashboard') }}"
                     class="list-group-item list-group-item-action {{ request()->routeIs('seller.dashboard') ? 'active' : '' }}">
                     <i class="fas fa-tachometer-alt me-2"></i> Dashboard
                 </a>
 
-                @if($store && $store->status === 'approved')
-                <a href="{{ route('seller.products.index') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.products.*') ? 'active' : '' }}">
-                    <i class="fas fa-box me-2"></i> Products
+                @php
+                $user = auth()->user();
+                $store = $user->store;
+                @endphp
+
+                <!-- Store Management -->
+                @if(!$store)
+                <a href="{{ route('seller.store.setup') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.store.setup') ? 'active' : '' }}">
+                    <i class="fas fa-plus-circle me-2 text-success"></i> Setup Store
                 </a>
-                <a href="{{ route('seller.orders.index') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.*') ? 'active' : '' }}">
-                    <i class="fas fa-shopping-bag me-2"></i> Orders
+                @else
+                <!-- Store Menu -->
+                <div class="list-group-item bg-light border-0">
+                    <small class="text-muted fw-bold">STORE MANAGEMENT</small>
+                </div>
+
+                <a href="{{ route('seller.store.show') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.store.show') ? 'active' : '' }}">
+                    <i class="fas fa-store me-2"></i> My Store
                 </a>
-                <a href="{{ route('seller.reviews.index') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.reviews.*') ? 'active' : '' }}">
-                    <i class="fas fa-star me-2"></i> Reviews
+
+                <a href="{{ route('seller.store.edit') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.store.edit') ? 'active' : '' }}">
+                    <i class="fas fa-edit me-2"></i> Edit Store
                 </a>
-                <a href="{{ route('seller.reports.sales') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.reports.*') ? 'active' : '' }}">
-                    <i class="fas fa-chart-bar me-2"></i> Reports
+
+                @if($store->status === 'pending')
+                <a href="{{ route('seller.store.status') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.store.status') ? 'active' : '' }}">
+                    <i class="fas fa-clock me-2 text-warning"></i> Store Status
                 </a>
                 @endif
 
-                <a href="{{ route('seller.store.edit') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.store.*') ? 'active' : '' }}">
-                    <i class="fas fa-store me-2"></i> Store Settings
+                @if($store->status === 'active')
+                <!-- Products Menu -->
+                <div class="list-group-item bg-light border-0">
+                    <small class="text-muted fw-bold">PRODUCTS</small>
+                </div>
+
+                <a href="{{ route('seller.products.index') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.products.index') ? 'active' : '' }}">
+                    <i class="fas fa-box me-2"></i> All Products
                 </a>
+
+                <a href="{{ route('seller.products.create') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.products.create') ? 'active' : '' }}">
+                    <i class="fas fa-plus me-2"></i> Add Product
+                </a>
+
+                <!-- Orders Menu -->
+                <div class="list-group-item bg-light border-0">
+                    <small class="text-muted fw-bold">ORDERS</small>
+                </div>
+
+                <a href="{{ route('seller.orders.index') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.index') ? 'active' : '' }}">
+                    <i class="fas fa-shopping-bag me-2"></i> All Orders
+                </a>
+
+                <a href="{{ route('seller.orders.new') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.new') ? 'active' : '' }}">
+                    <i class="fas fa-bell me-2 text-info"></i> New Orders
+                    @if(isset($newOrdersCount) && $newOrdersCount > 0)
+                    <span class="badge bg-danger ms-auto">{{ $newOrdersCount }}</span>
+                    @endif
+                </a>
+
+                <a href="{{ route('seller.orders.processing') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.processing') ? 'active' : '' }}">
+                    <i class="fas fa-cog me-2 text-warning"></i> Processing
+                </a>
+
+                <a href="{{ route('seller.orders.completed') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.completed') ? 'active' : '' }}">
+                    <i class="fas fa-check-circle me-2 text-success"></i> Completed
+                </a>
+
+                <a href="{{ route('seller.orders.canceled') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.canceled') ? 'active' : '' }}">
+                    <i class="fas fa-times-circle me-2 text-danger"></i> Canceled
+                </a>
+
+                <!-- Reports Menu -->
+                <div class="list-group-item bg-light border-0">
+                    <small class="text-muted fw-bold">REPORTS</small>
+                </div>
+
+                <a href="{{ route('seller.reports.sales') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.reports.sales') ? 'active' : '' }}">
+                    <i class="fas fa-chart-line me-2"></i> Sales Report
+                </a>
+
+                <a href="{{ route('seller.reports.products') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.reports.products') ? 'active' : '' }}">
+                    <i class="fas fa-chart-bar me-2"></i> Products Report
+                </a>
+
+                <a href="{{ route('seller.reports.inventory') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.reports.inventory') ? 'active' : '' }}">
+                    <i class="fas fa-warehouse me-2"></i> Inventory Report
+                </a>
+                @endif
+                @endif
+
+                <!-- Profile Menu -->
+                <div class="list-group-item bg-light border-0">
+                    <small class="text-muted fw-bold">ACCOUNT</small>
+                </div>
+
+                <a href="{{ route('seller.profile.show') }}"
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.profile.show') ? 'active' : '' }}">
+                    <i class="fas fa-user me-2"></i> My Profile
+                </a>
+
                 <a href="{{ route('seller.profile.edit') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.profile.*') ? 'active' : '' }}">
-                    <i class="fas fa-user me-2"></i> Profile
+                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.profile.edit') ? 'active' : '' }}">
+                    <i class="fas fa-user-edit me-2"></i> Edit Profile
                 </a>
+
+                <!-- Logout -->
+                <div class="list-group-item border-0" style="margin-top: 10px;">
+                    <form action="{{ route('logout') }}" method="POST" class="d-inline w-100">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100"
+                            onclick="return confirm('Are you sure you want to logout?')">
+                            <i class="fas fa-sign-out-alt me-2"></i> Logout
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 
@@ -175,10 +377,48 @@
             // Toggle sidebar
             const sidebarToggle = document.getElementById('sidebarToggle');
             if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', function() {
-                    document.getElementById('wrapper').classList.toggle('toggled');
+                // Improved implementation
+                sidebarToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const wrapper = document.getElementById('wrapper');
+                    if (wrapper) {
+                        wrapper.classList.toggle('toggled');
+                    }
                 });
             }
+
+            // Auto-scroll to active menu item
+            const activeMenuItem = document.querySelector('.list-group-item-action.active');
+            if (activeMenuItem) {
+                activeMenuItem.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }
+
+            // Smooth scroll for menu clicks
+            const menuItems = document.querySelectorAll('.list-group-item-action');
+            menuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    // Add loading state
+                    this.style.opacity = '0.7';
+                    setTimeout(() => {
+                        this.style.opacity = '1';
+                    }, 200);
+                });
+            });
+
+            // Remember scroll position
+            const sidebar = document.getElementById('sidebar-wrapper');
+            const scrollPosition = localStorage.getItem('sidebarScrollPosition');
+            if (scrollPosition) {
+                sidebar.scrollTop = scrollPosition;
+            }
+
+            // Save scroll position
+            sidebar.addEventListener('scroll', function() {
+                localStorage.setItem('sidebarScrollPosition', this.scrollTop);
+            });
         });
     </script>
 
