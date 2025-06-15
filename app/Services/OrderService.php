@@ -63,17 +63,24 @@ class OrderService
         }
     }
 
-    public function getOrdersForUser(User $user, array $filters = [])
+    /**
+     * Get orders for a specific user (seller)
+     */
+    public function getOrdersForUser($user, array $options = [])
     {
-        switch ($user->role) {
-            case 'buyer':
-                return $this->orderRepository->getOrdersByBuyer($user->id, $filters);
-            case 'seller':
-                return $this->orderRepository->getOrdersBySeller($user->id, $filters);
-            case 'admin':
-                return $this->orderRepository->getAllOrders($filters);
-            default:
-                return collect();
+        try {
+            $limit = $options['limit'] ?? 10;
+
+            return \App\Models\Order::whereHas('items.product', function ($q) use ($user) {
+                $q->where('seller_id', $user->id);
+            })
+                ->with(['user', 'items.product'])
+                ->orderBy('created_at', 'desc')
+                ->limit($limit)
+                ->get();
+        } catch (\Exception $e) {
+            \Log::error('Error in getOrdersForUser: ' . $e->getMessage());
+            return collect();
         }
     }
 

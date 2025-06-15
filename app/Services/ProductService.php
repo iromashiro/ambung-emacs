@@ -96,9 +96,19 @@ class ProductService
         return $this->productRepository->getFeaturedProducts($limit);
     }
 
-    public function getSellerProducts(User $seller)
+    /**
+     * Get products for a specific seller
+     */
+    public function getSellerProducts($user)
     {
-        return $this->productRepository->getProductsBySeller($seller->id);
+        try {
+            return \App\Models\Product::where('seller_id', $user->id)
+                ->with(['images', 'category'])
+                ->get();
+        } catch (\Exception $e) {
+            \Log::error('Error in getSellerProducts: ' . $e->getMessage());
+            return collect();
+        }
     }
 
     public function createProduct(array $data, User $seller): Product

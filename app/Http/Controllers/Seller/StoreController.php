@@ -11,11 +11,19 @@ use Illuminate\View\View;
 
 class StoreController extends Controller
 {
-    protected $storeService;
-
-    public function __construct(StoreService $storeService)
+    public function __construct(/* dependencies */)
     {
-        $this->storeService = $storeService;
+        // Set dependencies first
+        $this->serviceProperty = $service;
+
+        // Then apply middleware in correct order
+        $this->middleware(['auth', 'verified']);
+        $this->middleware('role:seller');
+
+        // Only add store.owner middleware if the controller requires active store
+        // DON'T add to StoreController (needed for creating store)
+        // DO add to OrderController, ReportController, ProductController
+        $this->middleware('store.owner')->except(['create', 'store']); // if needed
     }
 
     /**
@@ -28,7 +36,7 @@ class StoreController extends Controller
             return redirect()->route('seller.store.edit')
                 ->with('error', 'You already have a store');
         }
-        
+
         return view('seller.store.create');
     }
 
@@ -43,7 +51,7 @@ class StoreController extends Controller
                 $request->validated(),
                 $request->file('logo')
             );
-            
+
             return redirect()->route('seller.dashboard')
                 ->with('success', 'Store created successfully. Please wait for admin approval.');
         } catch (\Exception $e) {
@@ -58,12 +66,12 @@ class StoreController extends Controller
     public function edit(): View
     {
         $store = auth()->user()->store;
-        
+
         if (!$store) {
             return redirect()->route('seller.store.create')
                 ->with('error', 'You need to create a store first');
         }
-        
+
         return view('seller.store.edit', [
             'store' => $store,
         ]);
@@ -75,19 +83,19 @@ class StoreController extends Controller
     public function update(UpdateStoreRequest $request): RedirectResponse
     {
         $store = auth()->user()->store;
-        
+
         if (!$store) {
             return redirect()->route('seller.store.create')
                 ->with('error', 'You need to create a store first');
         }
-        
+
         try {
             $store = $this->storeService->updateStore(
                 $store,
                 $request->validated(),
                 $request->file('logo')
             );
-            
+
             return redirect()->route('seller.store.edit')
                 ->with('success', 'Store updated successfully');
         } catch (\Exception $e) {
