@@ -45,7 +45,7 @@ class Product extends Model
     {
         parent::boot();
 
-        // COMMENT OUT MODEL EVENTS - MENYEBABKAN TRANSACTION ABORT
+        // DISABLE MODEL EVENTS - MENYEBABKAN TRANSACTION ABORT DI POSTGRESQL
         // Auto-generate slug from name when creating a product
         // static::creating(function ($product) {
         //     $product->slug = $product->generateUniqueSlug($product->name);

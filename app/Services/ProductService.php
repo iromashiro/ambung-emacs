@@ -32,7 +32,7 @@ class ProductService
      */
     public function getProductsByStore($store, int $perPage = 10)
     {
-        // FIXED: Use seller_id directly from authenticated user
+        // FIXED: Use auth()->user()->id directly as seller_id
         $sellerId = auth()->user()->id;
 
         return Product::where('seller_id', $sellerId)
