@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Repositories\Interfaces\OrderRepositoryInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Events\OrderCreated;
-use App\Events\OrderStatusUpdated;
+use App\Events\OrderStatusUpdate;
 use App\Exceptions\InsufficientStockException;
 use App\Exceptions\InvalidStatusTransitionException;
 use Illuminate\Support\Facades\DB;
@@ -40,6 +40,7 @@ class OrderService
     /**
      * Get orders by store - MISSING METHOD ADDED
      */
+    // Di OrderService.php
     public function getOrdersByStore($store, array $options = [])
     {
         $limit = $options['limit'] ?? 10;
@@ -48,14 +49,11 @@ class OrderService
             $q->where('seller_id', $store->seller_id);
         })
             ->with([
-                'user',
-                'items' => function ($query) use ($store) {
-                    $query->whereHas('product', function ($q) use ($store) {
-                        $q->where('seller_id', $store->seller_id);
-                    });
-                },
-                'items.product'
+                'user:id,name,email',
+                'items:id,order_id,product_id,quantity,price',
+                'items.product:id,name,seller_id'
             ])
+            ->select('orders.*')
             ->orderBy('created_at', 'desc')
             ->paginate($limit);
     }
@@ -180,7 +178,8 @@ class OrderService
         $updated = $this->orderRepository->updateStatus($order, $newStatus);
 
         if ($updated) {
-            event(new OrderStatusUpdated($order, $newStatus));
+            // PERBAIKI BARIS INI - ganti dari OrderStatusUpdated ke OrderStatusUpdate
+            event(new OrderStatusUpdate($order, $newStatus));  // ✅ BENAR
         }
 
         return $updated;

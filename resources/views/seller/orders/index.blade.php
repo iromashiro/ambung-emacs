@@ -27,7 +27,7 @@
                 <div class="col-md-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-warning mb-1">{{ $stats['processing'] ?? 0 }}</h3>
+                            <h3 class="text-warning mb-1">{{ $stats['dispatched'] ?? 0 }}</h3>
                             <small class="text-muted">Processing</small>
                         </div>
                     </div>
@@ -35,7 +35,7 @@
                 <div class="col-md-3">
                     <div class="card text-center">
                         <div class="card-body">
-                            <h3 class="text-success mb-1">{{ $stats['completed'] ?? 0 }}</h3>
+                            <h3 class="text-success mb-1">{{ $stats['delivered'] ?? 0 }}</h3>
                             <small class="text-muted">Completed</small>
                         </div>
                     </div>
@@ -99,8 +99,8 @@
                             <div class="col-md-2">
                                 <select class="form-select" name="status">
                                     <option value="">All Status</option>
-                                    <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>
-                                        Pending</option>
+                                    <option value="new" {{ request('status') === 'new' ? 'selected' : '' }}>
+                                        new</option>
                                     <option value="confirmed" {{ request('status') === 'confirmed' ? 'selected' : '' }}>
                                         Confirmed</option>
                                     <option value="processing"
@@ -191,7 +191,7 @@
                                     <td>
                                         @php
                                         $statusColors = [
-                                        'pending' => 'warning',
+                                        'new' => 'warning',
                                         'confirmed' => 'info',
                                         'processing' => 'primary',
                                         'shipped' => 'info',
@@ -220,48 +220,18 @@
                                                         <i class="fas fa-eye me-1"></i> View Details
                                                     </a>
                                                 </li>
-                                                @if($order->status === 'pending')
+                                                @if($order->status === 'new')
                                                 <li>
                                                     <form action="{{ route('seller.orders.status.update', $order) }}"
                                                         method="POST" class="d-inline">
                                                         @csrf
                                                         @method('PATCH')
-                                                        <input type="hidden" name="status" value="confirmed">
+                                                        <input type="hidden" name="status" value="accepted">
                                                         <button type="submit" class="dropdown-item">
-                                                            <i class="fas fa-check me-1"></i> Confirm Order
+                                                            <i class="fas fa-check me-1"></i> Accept Order
                                                         </button>
                                                     </form>
                                                 </li>
-                                                @endif
-                                                @if(in_array($order->status, ['confirmed', 'processing']))
-                                                <li>
-                                                    <form action="{{ route('seller.orders.status.update', $order) }}"
-                                                        method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <input type="hidden" name="status"
-                                                            value="{{ $order->status === 'confirmed' ? 'processing' : 'shipped' }}">
-                                                        <button type="submit" class="dropdown-item">
-                                                            <i class="fas fa-arrow-right me-1"></i>
-                                                            {{ $order->status === 'confirmed' ? 'Start Processing' : 'Mark as Shipped' }}
-                                                        </button>
-                                                    </form>
-                                                </li>
-                                                @endif
-                                                @if($order->status === 'shipped')
-                                                <li>
-                                                    <form action="{{ route('seller.orders.status.update', $order) }}"
-                                                        method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('PATCH')
-                                                        <input type="hidden" name="status" value="delivered">
-                                                        <button type="submit" class="dropdown-item">
-                                                            <i class="fas fa-truck me-1"></i> Mark as Delivered
-                                                        </button>
-                                                    </form>
-                                                </li>
-                                                @endif
-                                                @if(in_array($order->status, ['pending', 'confirmed']))
                                                 <li>
                                                     <hr class="dropdown-divider">
                                                 </li>
@@ -276,6 +246,58 @@
                                                             <i class="fas fa-times me-1"></i> Cancel Order
                                                         </button>
                                                     </form>
+                                                </li>
+                                                @endif
+
+                                                @if($order->status === 'accepted')
+                                                <li>
+                                                    <form action="{{ route('seller.orders.status.update', $order) }}"
+                                                        method="POST" class="d-inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="status" value="dispatched">
+                                                        <button type="submit" class="dropdown-item">
+                                                            <i class="fas fa-shipping-fast me-1"></i> Dispatch Order
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li>
+                                                    <hr class="dropdown-divider">
+                                                </li>
+                                                <li>
+                                                    <form action="{{ route('seller.orders.status.update', $order) }}"
+                                                        method="POST" class="d-inline"
+                                                        onsubmit="return confirm('Are you sure you want to cancel this order?')">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="status" value="canceled">
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="fas fa-times me-1"></i> Cancel Order
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                @endif
+
+                                                @if($order->status === 'dispatched')
+                                                <li>
+                                                    <form action="{{ route('seller.orders.status.update', $order) }}"
+                                                        method="POST" class="d-inline">
+                                                        @csrf
+                                                        @method('PATCH')
+                                                        <input type="hidden" name="status" value="delivered">
+                                                        <button type="submit" class="dropdown-item">
+                                                            <i class="fas fa-check-circle me-1"></i> Mark as Delivered
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                @endif
+
+                                                @if(in_array($order->status, ['delivered', 'canceled']))
+                                                <li>
+                                                    <span class="dropdown-item-text text-muted">
+                                                        <i class="fas fa-info-circle me-1"></i>
+                                                        No actions available
+                                                    </span>
                                                 </li>
                                                 @endif
                                             </ul>

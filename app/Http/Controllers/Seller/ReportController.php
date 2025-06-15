@@ -11,9 +11,11 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    public function __construct(ReportService $reportService)
+    public function __construct(ReportService $reportService, OrderService $orderService, ProductService $productService)
     {
         $this->reportService = $reportService;
+        $this->orderService = $orderService;
+        $this->productService = $productService;
 
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');

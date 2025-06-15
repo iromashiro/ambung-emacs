@@ -76,8 +76,7 @@ class Order extends Model
      */
     public function getFormattedTotalAttribute()
     {
-        // Prioritaskan total_amount dari database, fallback ke calculated_total
-        $total = $this->total_amount ?: $this->calculated_total;
+        $total = $this->total_amount ?: 0;
         return 'Rp ' . number_format($total, 0, ',', '.');
     }
 
@@ -155,5 +154,38 @@ class Order extends Model
     public function getSellersAttribute()
     {
         return User::whereIn('id', $this->items->pluck('product.seller_id')->unique())->get();
+    }
+
+    // Tambahkan method untuk status label dan badge
+    public function getStatusLabelAttribute()
+    {
+        $statusLabels = [
+            'new' => 'New',
+            'accepted' => 'Accepted',
+            'dispatched' => 'Dispatched',
+            'delivered' => 'Delivered',
+            'canceled' => 'Canceled'
+        ];
+
+        return $statusLabels[$this->status] ?? ucfirst($this->status);
+    }
+
+    public function getStatusBadgeClassAttribute()
+    {
+        $badgeClasses = [
+            'new' => 'bg-primary',
+            'accepted' => 'bg-info',
+            'dispatched' => 'bg-warning',
+            'delivered' => 'bg-success',
+            'canceled' => 'bg-danger'
+        ];
+
+        return $badgeClasses[$this->status] ?? 'bg-secondary';
+    }
+
+    // Tambahkan accessor untuk memastikan total selalu ada
+    public function getTotalAttribute()
+    {
+        return $this->total_amount ?: 0;
     }
 }

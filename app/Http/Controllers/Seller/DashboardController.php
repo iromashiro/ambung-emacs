@@ -3,27 +3,30 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
-use App\Services\ReportService;
 use App\Services\OrderService;
 use App\Services\ProductService;
+use App\Models\Order;
+use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    protected $reportService;
     protected $orderService;
     protected $productService;
 
     public function __construct(
-        ReportService $reportService,
         OrderService $orderService,
         ProductService $productService
     ) {
+        $this->orderService = $orderService;
         $this->productService = $productService;
 
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
-        $this->middleware('store.owner'); // Products require active store
+        $this->middleware('store.owner');
     }
 
     /**
@@ -32,7 +35,7 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $store = $user->store; // Get store relationship
+        $store = $user->store;
 
         // Initialize default data
         $data = [
@@ -66,26 +69,24 @@ class DashboardController extends Controller
         // Store is approved, load full dashboard data
         try {
             // Get performance stats
-            $stats = $this->getPerformanceStats($user);
+            $stats = $this->getPerformanceStats($store);
             $data['stats'] = array_merge($data['stats'], $stats);
 
             // Get recent orders
-            $data['recentOrders'] = $this->getRecentOrders($user);
+            $data['recentOrders'] = $this->getRecentOrders($store);
 
             // Get low stock products
-            $data['lowStockProducts'] = $this->getLowStockProducts($user);
+            $data['lowStockProducts'] = $this->getLowStockProducts($store);
 
             // Get chart data
-            $data['salesData'] = $this->getSalesData($user);
-            $data['orderStatusData'] = $this->getOrderStatusData($user);
+            $data['salesData'] = $this->getSalesData($store);
+            $data['orderStatusData'] = $this->getOrderStatusData($store);
         } catch (\Exception $e) {
-            \Log::error('Seller dashboard error: ' . $e->getMessage(), [
+            Log::error('Seller dashboard error: ' . $e->getMessage(), [
                 'user_id' => $user->id,
                 'store_id' => $store->id ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
-
-            // Continue with default data if there's an error
         }
 
         return view('seller.dashboard', $data);
@@ -94,27 +95,96 @@ class DashboardController extends Controller
     /**
      * Get performance statistics for the seller
      */
-    private function getPerformanceStats($user)
+    private function getPerformanceStats($store): array
     {
         try {
-            // Use services to get stats
-            $stats = $this->reportService->getSellerPerformanceReport($user->id);
-            return $stats;
+            $sellerId = $store->seller_id;
+            $currentMonth = Carbon::now()->startOfMonth();
+            $lastMonth = Carbon::now()->subMonth()->startOfMonth();
+
+            // Get current month stats
+            $currentStats = $this->getStatsForPeriod($sellerId, $currentMonth, Carbon::now());
+            $lastMonthStats = $this->getStatsForPeriod($sellerId, $lastMonth, $currentMonth);
+
+            // Calculate growth percentages
+            $productGrowth = $this->calculateGrowth($currentStats['products'], $lastMonthStats['products']);
+            $orderGrowth = $this->calculateGrowth($currentStats['orders'], $lastMonthStats['orders']);
+            $revenueGrowth = $this->calculateGrowth($currentStats['revenue'], $lastMonthStats['revenue']);
+
+            return [
+                'total_products' => $currentStats['products'],
+                'total_orders' => $currentStats['orders'],
+                'total_revenue' => $currentStats['revenue'],
+                'average_rating' => $currentStats['rating'],
+                'total_reviews' => $currentStats['reviews'],
+                'product_growth' => $productGrowth,
+                'order_growth' => $orderGrowth,
+                'revenue_growth' => $revenueGrowth,
+            ];
         } catch (\Exception $e) {
-            \Log::error('Error getting performance stats: ' . $e->getMessage());
+            Log::error('Error getting performance stats: ' . $e->getMessage());
             return [];
         }
     }
 
     /**
+     * Get stats for specific period
+     */
+    private function getStatsForPeriod($sellerId, $startDate, $endDate): array
+    {
+        // Total products
+        $totalProducts = Product::where('seller_id', $sellerId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->count();
+
+        // Total orders and revenue
+        $orderStats = Order::whereHas('items.product', function ($q) use ($sellerId) {
+            $q->where('seller_id', $sellerId);
+        })
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('COUNT(*) as total_orders, SUM(total_amount) as total_revenue')
+            ->first();
+
+        // Average rating (simplified - you might want to implement proper review system)
+        $averageRating = 4.5; // Placeholder
+        $totalReviews = 0; // Placeholder
+
+        return [
+            'products' => $totalProducts,
+            'orders' => $orderStats->total_orders ?? 0,
+            'revenue' => $orderStats->total_revenue ?? 0,
+            'rating' => $averageRating,
+            'reviews' => $totalReviews,
+        ];
+    }
+
+    /**
+     * Calculate growth percentage
+     */
+    private function calculateGrowth($current, $previous): float
+    {
+        if ($previous == 0) {
+            return $current > 0 ? 100 : 0;
+        }
+
+        return round((($current - $previous) / $previous) * 100, 1);
+    }
+
+    /**
      * Get recent orders for the seller
      */
-    private function getRecentOrders($user)
+    private function getRecentOrders($store)
     {
         try {
-            return $this->orderService->getOrdersForUser($user, ['limit' => 5]);
+            return Order::whereHas('items.product', function ($q) use ($store) {
+                $q->where('seller_id', $store->seller_id);
+            })
+                ->with(['user', 'items.product'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
         } catch (\Exception $e) {
-            \Log::error('Error getting recent orders: ' . $e->getMessage());
+            Log::error('Error getting recent orders: ' . $e->getMessage());
             return collect();
         }
     }
@@ -122,28 +192,45 @@ class DashboardController extends Controller
     /**
      * Get low stock products for the seller
      */
-    private function getLowStockProducts($user)
+    private function getLowStockProducts($store)
     {
         try {
-            $products = $this->productService->getSellerProducts($user);
-            return $products->where('stock', '<', 10)->take(5);
+            return Product::where('seller_id', $store->seller_id)
+                ->where('stock', '<', 10)
+                ->orderBy('stock', 'asc')
+                ->limit(5)
+                ->get();
         } catch (\Exception $e) {
-            \Log::error('Error getting low stock products: ' . $e->getMessage());
+            Log::error('Error getting low stock products: ' . $e->getMessage());
             return collect();
         }
     }
 
     /**
-     * Get sales data for chart
+     * Get sales data for chart (last 7 days)
      */
-    private function getSalesData($user)
+    private function getSalesData($store): array
     {
         try {
-            // Get last 7 days sales data
-            $salesData = $this->reportService->getDailySalesData($user->id, 7);
-            return $salesData ?? [0, 0, 0, 0, 0, 0, 0];
+            $salesData = [];
+            $sellerId = $store->seller_id;
+
+            for ($i = 6; $i >= 0; $i--) {
+                $date = Carbon::now()->subDays($i)->startOfDay();
+                $nextDate = $date->copy()->addDay();
+
+                $dailySales = Order::whereHas('items.product', function ($q) use ($sellerId) {
+                    $q->where('seller_id', $sellerId);
+                })
+                    ->whereBetween('created_at', [$date, $nextDate])
+                    ->sum('total_amount');
+
+                $salesData[] = $dailySales ?? 0;
+            }
+
+            return $salesData;
         } catch (\Exception $e) {
-            \Log::error('Error getting sales data: ' . $e->getMessage());
+            Log::error('Error getting sales data: ' . $e->getMessage());
             return [0, 0, 0, 0, 0, 0, 0];
         }
     }
@@ -151,13 +238,29 @@ class DashboardController extends Controller
     /**
      * Get order status data for chart
      */
-    private function getOrderStatusData($user)
+    private function getOrderStatusData($store): array
     {
         try {
-            $orderStatusData = $this->reportService->getOrderStatusData($user->id);
-            return $orderStatusData ?? [0, 0, 0, 0, 0];
+            $sellerId = $store->seller_id;
+
+            $statusCounts = Order::whereHas('items.product', function ($q) use ($sellerId) {
+                $q->where('seller_id', $sellerId);
+            })
+                ->selectRaw('status, COUNT(*) as count')
+                ->groupBy('status')
+                ->pluck('count', 'status')
+                ->toArray();
+
+            // Return in order: new, accepted, dispatched, delivered, canceled
+            return [
+                $statusCounts['new'] ?? 0,
+                $statusCounts['accepted'] ?? 0,
+                $statusCounts['dispatched'] ?? 0,
+                $statusCounts['delivered'] ?? 0,
+                $statusCounts['canceled'] ?? 0,
+            ];
         } catch (\Exception $e) {
-            \Log::error('Error getting order status data: ' . $e->getMessage());
+            Log::error('Error getting order status data: ' . $e->getMessage());
             return [0, 0, 0, 0, 0];
         }
     }

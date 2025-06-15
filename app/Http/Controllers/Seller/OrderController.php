@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,6 +23,7 @@ class OrderController extends Controller
     /**
      * Display a listing of orders
      */
+    // Tambahkan di method index() untuk debugging:
     public function index(Request $request): View
     {
         $store = auth()->user()->store;
@@ -31,15 +33,35 @@ class OrderController extends Controller
                 ->with('error', 'You need to create a store first');
         }
 
-        // PERBAIKI: Load relationships untuk calculation
+        // Get paginated orders untuk table
         $orders = $this->orderService->getOrdersByStore($store);
 
-        // Ensure relationships are loaded
-        $orders->load(['items.product', 'user']);
+        // PERBAIKAN UTAMA: Hitung stats dari database langsung, bukan dari paginated collection
+        $stats = $this->calculateOrderStats($store);
 
         return view('seller.orders.index', [
             'orders' => $orders,
+            'stats' => $stats,
         ]);
+    }
+
+    /**
+     * Calculate order statistics from database
+     */
+    private function calculateOrderStats($store): array
+    {
+        // Query langsung ke database untuk mendapatkan stats yang akurat
+        $baseQuery = Order::whereHas('items.product', function ($q) use ($store) {
+            $q->where('seller_id', $store->seller_id);
+        });
+
+        return [
+            'new' => (clone $baseQuery)->where('status', 'new')->count(),
+            'accepted' => (clone $baseQuery)->where('status', 'accepted')->count(),
+            'dispatched' => (clone $baseQuery)->where('status', 'dispatched')->count(),
+            'delivered' => (clone $baseQuery)->where('status', 'delivered')->count(),
+            'canceled' => (clone $baseQuery)->where('status', 'canceled')->count(),
+        ];
     }
 
     /**
