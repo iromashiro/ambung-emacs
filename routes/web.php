@@ -50,7 +50,8 @@ Route::middleware(['auth', 'role:buyer'])->group(function () {
     Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
     Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.process');
 
-    Route::get('/orders', [BuyerOrderController::class, 'index'])->name('buyer.orders.index');
+    Route::get('/orders', [BuyerOrderController::class, 'index'])->name('orders.index');
+    Route::get('/buyer/orders', [BuyerOrderController::class, 'index'])->name('buyer.orders.index');
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->name('buyer.orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->name('buyer.orders.cancel');
     Route::patch('/orders/{order}/confirm', [BuyerOrderController::class, 'confirmDelivery'])->name('buyer.orders.confirm');
@@ -97,6 +98,31 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     // Category management
     Route::resource('categories', AdminCategoryController::class, ['as' => 'admin']);
 });
+
+Route::get('/debug/cart/{userId?}', function ($userId = null) {
+    if (!$userId) {
+        $userId = auth()->id();
+    }
+
+    $carts = \App\Models\Cart::where('user_id', $userId)
+        ->with(['product'])
+        ->get();
+
+    return response()->json([
+        'user_id' => $userId,
+        'cart_count' => $carts->count(),
+        'cart_items' => $carts->map(function ($cart) {
+            return [
+                'id' => $cart->id,
+                'product_id' => $cart->product_id,
+                'quantity' => $cart->quantity,
+                'has_product' => !!$cart->product,
+                'product_name' => $cart->product->name ?? 'NULL',
+                'product_price' => $cart->product->price ?? 'NULL',
+            ];
+        })
+    ]);
+})->middleware('auth');
 
 include __DIR__ . '/auth.php';
 include __DIR__ . '/seller.php';

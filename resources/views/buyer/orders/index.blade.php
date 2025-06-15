@@ -49,7 +49,7 @@
                                 <div class="flex-grow-1">
                                     <small>
                                         {{ $item->product->name ?? 'Product no longer available' }}
-                                        ({{ $item->quantity }}x)
+                                        ({{ $item->qty_int }}x) {{-- FIXED: gunakan qty_int --}}
                                     </small>
                                 </div>
                             </div>

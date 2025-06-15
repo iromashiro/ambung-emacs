@@ -8,10 +8,19 @@
         <div class="col-lg-10">
             <h1 class="h3 mb-4">Checkout</h1>
 
-            <form method="POST" action="{{ route('checkout.process') }}" @submit="isSubmitting = true">
+            {{-- Show warnings if any --}}
+            @if(session('warning'))
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                {{ session('warning') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            @endif
+
+            <form method="POST" action="{{ route('checkout.process') }}" @submit="isSubmitting = true"
+                id="checkoutForm">
                 @csrf
 
-                <!-- Hidden cart items -->
+                <!-- Hidden cart items - FIXED version -->
                 @foreach($selectedCartItemIds as $cartItemId)
                 <input type="hidden" name="cart_items[]" value="{{ $cartItemId }}">
                 @endforeach
@@ -24,6 +33,7 @@
                                 <h5 class="mb-0">Order Summary</h5>
                             </div>
                             <div class="card-body">
+                                @if(isset($itemsByStore) && count($itemsByStore) > 0)
                                 @foreach($itemsByStore as $storeName => $items)
                                 <div class="mb-4">
                                     <h6 class="text-primary mb-3">
@@ -33,7 +43,7 @@
                                     @foreach($items as $item)
                                     <div class="d-flex align-items-center mb-3 p-3 border rounded">
                                         <div class="me-3">
-                                            @if($item->product->image)
+                                            @if($item->product && $item->product->image)
                                             <img src="{{ Storage::url($item->product->image) }}" class="rounded"
                                                 style="width: 60px; height: 60px; object-fit: cover;"
                                                 alt="{{ $item->product->name }}">
@@ -45,16 +55,17 @@
                                             @endif
                                         </div>
                                         <div class="flex-grow-1">
-                                            <h6 class="mb-1">{{ $item->product->name }}</h6>
+                                            <h6 class="mb-1">{{ $item->product->name ?? 'Product no longer available' }}
+                                            </h6>
                                             <div class="text-muted small">
-                                                Rp {{ number_format($item->product->price, 0, ',', '.') }} x
+                                                Rp {{ number_format($item->product->price ?? 0, 0, ',', '.') }} x
                                                 {{ $item->quantity }}
                                             </div>
                                         </div>
                                         <div class="text-end">
                                             <div class="fw-bold text-primary">
                                                 Rp
-                                                {{ number_format($item->product->price * $item->quantity, 0, ',', '.') }}
+                                                {{ number_format(($item->product->price ?? 0) * $item->quantity, 0, ',', '.') }}
                                             </div>
                                         </div>
                                     </div>
@@ -65,9 +76,17 @@
                                 <hr>
                                 @endif
                                 @endforeach
+                                @else
+                                <div class="text-center py-4">
+                                    <p class="text-muted">No items found for checkout</p>
+                                    <a href="{{ route('cart.index') }}" class="btn btn-primary">Back to Cart</a>
+                                </div>
+                                @endif
                             </div>
                         </div>
 
+                        {{-- Only show shipping form if we have items --}}
+                        @if(isset($itemsByStore) && count($itemsByStore) > 0)
                         <!-- Shipping Information -->
                         <div class="card border-0 shadow-sm mb-4">
                             <div class="card-header bg-white">
@@ -77,9 +96,10 @@
                                 <div class="row g-3">
                                     <div class="col-md-12">
                                         <label for="shipping_address" class="form-label">Shipping Address *</label>
-                                        <input type="hidden" id="shipping_address" name="shipping_address"
-                                            value="{{ old('shipping_address', $user->address ?? '') }}"
-                                            placeholder="Enter your complete shipping address" required>
+                                        <textarea class="form-control @error('shipping_address') is-invalid @enderror"
+                                            id="shipping_address" name="shipping_address" rows="3"
+                                            placeholder="Enter your complete shipping address"
+                                            required>{{ old('shipping_address', $user->address ?? '') }}</textarea>
                                         @error('shipping_address')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                         @enderror
@@ -103,6 +123,10 @@
                                             <option value="cod" {{ old('payment_method') === 'cod' ? 'selected' : '' }}>
                                                 Cash on Delivery (COD)
                                             </option>
+                                            <option value="transfer"
+                                                {{ old('payment_method') === 'transfer' ? 'selected' : '' }}>
+                                                Bank Transfer
+                                            </option>
                                         </select>
                                         @error('payment_method')
                                         <div class="invalid-feedback">{{ $message }}</div>
@@ -121,9 +145,11 @@
                                 </div>
                             </div>
                         </div>
+                        @endif
                     </div>
 
                     <!-- Price Summary -->
+                    @if(isset($itemsByStore) && count($itemsByStore) > 0)
                     <div class="col-lg-4">
                         <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
                             <div class="card-header bg-white">
@@ -136,8 +162,7 @@
                                 </div>
                                 <div class="d-flex justify-content-between mb-3">
                                     <span>Shipping Fee</span>
-                                    <span class="fw-bold">Rp
-                                        {{ number_format($totalShippingFee ?? 0, 0, ',', '.') }}</span>
+                                    <span class="fw-bold">Free</span>
                                 </div>
                                 <hr>
                                 <div class="d-flex justify-content-between mb-3">
@@ -163,6 +188,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                 </div>
             </form>
         </div>
@@ -178,8 +204,33 @@
 
             init() {
                 console.log('Checkout page initialized');
+
+                // Check if form has valid cart items
+                const cartItems = document.querySelectorAll('input[name="cart_items[]"]');
+                console.log('Cart items in form:', cartItems.length);
+
+                if (cartItems.length === 0) {
+                    console.warn('No cart items found in form');
+                }
             }
         }
     }
+
+    // Prevent back button issues
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            window.location.reload();
+        }
+    });
+
+    // Prevent multiple form submissions
+    document.getElementById('checkoutForm').addEventListener('submit', function(e) {
+        const submitButton = this.querySelector('button[type="submit"]');
+        if (submitButton.disabled) {
+            e.preventDefault();
+            return false;
+        }
+        submitButton.disabled = true;
+    });
 </script>
 @endsection

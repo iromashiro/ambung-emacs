@@ -241,23 +241,80 @@ class CartService
         }
     }
 
+    /**
+     * Get specific cart items by IDs with comprehensive validation
+     */
     public function getCartItemsById(array $cartItemIds)
     {
         $userId = Auth::id();
         $sessionId = Session::getId();
 
+        \Log::info('Getting cart items by IDs', [
+            'cart_item_ids' => $cartItemIds,
+            'user_id' => $userId,
+            'session_id' => $sessionId
+        ]);
+
         if ($userId) {
-            return Cart::whereIn('id', $cartItemIds)
+            $cartItems = Cart::whereIn('id', $cartItemIds)
                 ->where('user_id', $userId)
-                ->with('product.store')
+                ->with(['product.seller.store', 'product.images'])
                 ->get();
         } else {
-            return Cart::whereIn('id', $cartItemIds)
+            $cartItems = Cart::whereIn('id', $cartItemIds)
                 ->where('session_id', $sessionId)
                 ->whereNull('user_id')
-                ->with('product.store')
+                ->with(['product.seller.store', 'product.images'])
                 ->get();
         }
+
+        \Log::info('Cart items retrieved', [
+            'requested_count' => count($cartItemIds),
+            'retrieved_count' => $cartItems->count(),
+            'cart_items' => $cartItems->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'has_product' => isset($item->product),
+                    'product_price' => $item->product->price ?? 'NULL'
+                ];
+            })
+        ]);
+
+        // Validate that we got all requested items
+        if ($cartItems->count() !== count($cartItemIds)) {
+            $foundIds = $cartItems->pluck('id')->toArray();
+            $missingIds = array_diff($cartItemIds, $foundIds);
+            throw new \Exception('Cart items not found: ' . implode(', ', $missingIds));
+        }
+
+        // Validate that all items have valid data
+        foreach ($cartItems as $item) {
+            if (!$item->product) {
+                throw new \Exception("Product not found for cart item {$item->id}");
+            }
+
+            if (is_null($item->quantity) || $item->quantity <= 0) {
+                throw new \Exception("Invalid quantity for cart item {$item->id}: quantity is '{$item->quantity}'");
+            }
+
+            if (is_null($item->product->price) || $item->product->price <= 0) {
+                throw new \Exception("Invalid product price for cart item {$item->id}: price is '{$item->product->price}'");
+            }
+
+            // Additional validation untuk memastikan product masih aktif
+            if ($item->product->status !== 'active') {
+                throw new \Exception("Product '{$item->product->name}' is no longer active");
+            }
+
+            // Validate stock
+            if ($item->quantity > $item->product->stock) {
+                throw new \Exception("Insufficient stock for product '{$item->product->name}'. Available: {$item->product->stock}, Requested: {$item->quantity}");
+            }
+        }
+
+        return $cartItems;
     }
 
     /**

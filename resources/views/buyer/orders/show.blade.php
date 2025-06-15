@@ -35,12 +35,14 @@
                         <div class="flex-grow-1">
                             <h6 class="mb-1">{{ $item->product->name ?? 'Product no longer available' }}</h6>
                             <div class="text-muted small">
-                                Rp {{ number_format($item->price, 0, ',', '.') }} x {{ $item->quantity }}
+                                {{-- FIXED: gunakan field names yang benar --}}
+                                Rp {{ number_format($item->price_int, 0, ',', '.') }} x {{ $item->qty_int }}
                             </div>
                         </div>
                         <div class="text-end">
                             <div class="fw-bold">
-                                Rp {{ number_format($item->total, 0, ',', '.') }}
+                                {{-- FIXED: calculate total manually karena tidak ada field total --}}
+                                Rp {{ number_format($item->price_int * $item->qty_int, 0, ',', '.') }}
                             </div>
                         </div>
                     </div>
