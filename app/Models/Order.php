@@ -4,16 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\User; // TAMBAH INI!
+use App\Models\OrderItem; // TAMBAH INI!
 
 class Order extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'buyer_id',
         'total_amount',
@@ -23,11 +20,6 @@ class Order extends Model
         'notes'
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'total_amount' => 'decimal:2'
     ];
@@ -41,12 +33,50 @@ class Order extends Model
     }
 
     /**
+     * Get the user that owns the order (alias for buyer).
+     * TAMBAH METHOD INI UNTUK MENGATASI ERROR!
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'buyer_id');
+    }
+
+    /**
      * Get the items for the order.
      */
     public function items()
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    /**
+     * TAMBAH: Get calculated total from order items
+     */
+    public function getCalculatedTotalAttribute()
+    {
+        return $this->items->sum(function ($item) {
+            return $item->quantity * $item->price;
+        });
+    }
+
+    /**
+     * TAMBAH: Get total items count
+     */
+    public function getTotalItemsAttribute()
+    {
+        return $this->items->sum('quantity');
+    }
+
+    /**
+     * TAMBAH: Get formatted total
+     */
+    public function getFormattedTotalAttribute()
+    {
+        $total = $this->calculated_total ?: $this->total_amount;
+        return 'Rp ' . number_format($total, 0, ',', '.');
+    }
+
+    // ... rest of existing methods tetap sama
 
     /**
      * Scope a query to filter by status.

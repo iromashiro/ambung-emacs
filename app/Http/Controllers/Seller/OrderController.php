@@ -31,7 +31,11 @@ class OrderController extends Controller
                 ->with('error', 'You need to create a store first');
         }
 
+        // PERBAIKI: Load relationships untuk calculation
         $orders = $this->orderService->getOrdersByStore($store);
+
+        // Ensure relationships are loaded
+        $orders->load(['items.product', 'user']);
 
         return view('seller.orders.index', [
             'orders' => $orders,
@@ -55,6 +59,9 @@ class OrderController extends Controller
             'limit' => 20
         ]);
 
+        // TAMBAH: Load relationships
+        $orders->load(['items.product', 'user']);
+
         return view('seller.orders.new', [
             'orders' => $orders,
         ]);
@@ -71,6 +78,9 @@ class OrderController extends Controller
             'status' => 'processing',
             'limit' => 20
         ]);
+
+        // TAMBAH: Load relationships
+        $orders->load(['items.product', 'user']);
 
         return view('seller.orders.processing', [
             'orders' => $orders,
@@ -89,6 +99,9 @@ class OrderController extends Controller
             'limit' => 20
         ]);
 
+        // TAMBAH: Load relationships
+        $orders->load(['items.product', 'user']);
+
         return view('seller.orders.completed', [
             'orders' => $orders,
         ]);
@@ -105,6 +118,9 @@ class OrderController extends Controller
             'status' => 'canceled',
             'limit' => 20
         ]);
+
+        // TAMBAH: Load relationships
+        $orders->load(['items.product', 'user']);
 
         return view('seller.orders.canceled', [
             'orders' => $orders,
@@ -123,6 +139,9 @@ class OrderController extends Controller
         if (!$order) {
             abort(404, 'Order not found');
         }
+
+        // PERBAIKI: Load relationships untuk calculation
+        $order->load(['items.product', 'user']);
 
         // Check if user has permission to view this order
         $store = auth()->user()->store;

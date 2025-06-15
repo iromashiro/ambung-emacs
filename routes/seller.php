@@ -57,14 +57,17 @@ Route::middleware(['auth', 'role:seller'])->prefix('seller')->name('seller.')->g
     });
 
     // Order Management (requires approved store)
+    // Order Management (requires approved store)
     Route::middleware('store.owner')->prefix('orders')->name('orders.')->group(function () {
         Route::get('/', [OrderController::class, 'index'])->name('index');
         Route::get('/{order}', [OrderController::class, 'show'])->name('show');
         Route::patch('/{order}/status', [OrderController::class, 'updateStatus'])->name('status.update');
-        Route::get('/new', [OrderController::class, 'newOrders'])->name('new');
-        Route::get('/processing', [OrderController::class, 'processingOrders'])->name('processing');
-        Route::get('/completed', [OrderController::class, 'completedOrders'])->name('completed');
-        Route::get('/canceled', [OrderController::class, 'canceledOrders'])->name('canceled');
+
+        // PERBAIKI INI - SESUAIKAN DENGAN METHOD DI CONTROLLER
+        Route::get('/new', [OrderController::class, 'new'])->name('new'); // UBAH dari 'newOrders' ke 'new'
+        Route::get('/processing', [OrderController::class, 'processing'])->name('processing'); // UBAH dari 'processingOrders' ke 'processing'
+        Route::get('/completed', [OrderController::class, 'completed'])->name('completed'); // UBAH dari 'completedOrders' ke 'completed'
+        Route::get('/canceled', [OrderController::class, 'canceled'])->name('canceled'); // UBAH dari 'canceledOrders' ke 'canceled'
     });
 
     // Reports & Analytics (requires approved store)
