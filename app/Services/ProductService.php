@@ -28,11 +28,14 @@ class ProductService
     }
 
     /**
-     * Get products by store - MISSING METHOD ADDED
+     * Get products by store - FIXED METHOD
      */
     public function getProductsByStore($store, int $perPage = 10)
     {
-        return Product::where('seller_id', $store->seller_id)
+        // FIXED: Use seller_id directly from authenticated user
+        $sellerId = auth()->user()->id;
+
+        return Product::where('seller_id', $sellerId)
             ->with(['category', 'images'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
@@ -130,17 +133,27 @@ class ProductService
             $productData = [
                 'seller_id' => $seller->id,
                 'name' => $data['name'],
-                'slug' => Str::slug($data['name']) . '-' . Str::random(6),
+                'slug' => Str::slug($data['name']) . '-' . Str::random(6), // Manual slug generation
                 'description' => $data['description'],
                 'price' => $data['price'],
-                'stock' => $data['stock'],
+                'stock' => $data['stock'] ?? 0,
                 'category_id' => $data['category_id'],
                 'status' => 'active',
                 'is_featured' => $data['is_featured'] ?? false
             ];
 
+            \Log::info('Creating product with clean data:', $productData);
+
+            // Create product using repository
             $product = $this->productRepository->create($productData);
 
+            \Log::info('Product created successfully:', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'seller_id' => $product->seller_id
+            ]);
+
+            // Handle images if provided
             if (isset($data['images']) && is_array($data['images'])) {
                 $this->handleProductImages($product, $data['images']);
             }

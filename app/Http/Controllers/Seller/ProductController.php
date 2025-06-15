@@ -85,15 +85,22 @@ class ProductController extends Controller
         }
 
         try {
+            // Debug: Log the data being sent
+            \Log::info('Creating product with data:', $request->validated());
+            \Log::info('Seller ID:', ['seller_id' => auth()->user()->id]);
+
             $product = $this->productService->createProduct(
-                $store,
                 $request->validated(),
-                $request->file('image')
+                auth()->user() // Pass user instead of store
             );
+
+            \Log::info('Product created successfully:', ['product_id' => $product->id]);
 
             return redirect()->route('seller.products.index')
                 ->with('success', 'Product created successfully');
         } catch (\Exception $e) {
+            \Log::error('Error creating product:', ['error' => $e->getMessage()]);
+
             return redirect()->route('seller.products.create')
                 ->with('error', $e->getMessage());
         }
@@ -104,10 +111,16 @@ class ProductController extends Controller
      */
     public function show(string $id): View
     {
-        $product = $this->productService->getProductById($id);
+        // Convert string to int for ProductService
+        $productId = (int) $id;
+        $product = $this->productService->getProductById($productId);
 
-        // Check if user has permission to view this product
-        if (auth()->user()->store->id !== $product->store_id) {
+        if (!$product) {
+            abort(404, 'Product not found');
+        }
+
+        // Check if user has permission to view this product - FIXED
+        if (auth()->user()->id !== $product->seller_id) {
             abort(403, 'You do not have permission to view this product');
         }
 
@@ -121,10 +134,16 @@ class ProductController extends Controller
      */
     public function edit(string $id): View
     {
-        $product = $this->productService->getProductById($id);
+        // Convert string to int for ProductService
+        $productId = (int) $id;
+        $product = $this->productService->getProductById($productId);
 
-        // Check if user has permission to edit this product
-        if (auth()->user()->store->id !== $product->store_id) {
+        if (!$product) {
+            abort(404, 'Product not found');
+        }
+
+        // Check if user has permission to edit this product - FIXED
+        if (auth()->user()->id !== $product->seller_id) {
             abort(403, 'You do not have permission to edit this product');
         }
 
@@ -141,18 +160,23 @@ class ProductController extends Controller
      */
     public function update(UpdateProductRequest $request, string $id): RedirectResponse
     {
-        $product = $this->productService->getProductById($id);
+        // Convert string to int for ProductService
+        $productId = (int) $id;
+        $product = $this->productService->getProductById($productId);
 
-        // Check if user has permission to update this product
-        if (auth()->user()->store->id !== $product->store_id) {
+        if (!$product) {
+            abort(404, 'Product not found');
+        }
+
+        // Check if user has permission to update this product - FIXED
+        if (auth()->user()->id !== $product->seller_id) {
             abort(403, 'You do not have permission to update this product');
         }
 
         try {
             $product = $this->productService->updateProduct(
                 $product,
-                $request->validated(),
-                $request->file('image')
+                $request->validated()
             );
 
             return redirect()->route('seller.products.show', $product->id)
@@ -168,10 +192,16 @@ class ProductController extends Controller
      */
     public function destroy(string $id): RedirectResponse
     {
-        $product = $this->productService->getProductById($id);
+        // Convert string to int for ProductService
+        $productId = (int) $id;
+        $product = $this->productService->getProductById($productId);
 
-        // Check if user has permission to delete this product
-        if (auth()->user()->store->id !== $product->store_id) {
+        if (!$product) {
+            abort(404, 'Product not found');
+        }
+
+        // Check if user has permission to delete this product - FIXED
+        if (auth()->user()->id !== $product->seller_id) {
             abort(403, 'You do not have permission to delete this product');
         }
 
@@ -183,6 +213,39 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             return redirect()->route('seller.products.index')
                 ->with('error', $e->getMessage());
+        }
+    }
+
+    /**
+     * Update product status (activate/deactivate)
+     */
+    public function updateStatus(Request $request, string $id): RedirectResponse
+    {
+        $request->validate([
+            'status' => 'required|in:active,inactive'
+        ]);
+
+        // Convert string to int for ProductService
+        $productId = (int) $id;
+        $product = $this->productService->getProductById($productId);
+
+        if (!$product) {
+            abort(404, 'Product not found');
+        }
+
+        // Check if user has permission to update this product
+        if (auth()->user()->id !== $product->seller_id) {
+            abort(403, 'You do not have permission to update this product');
+        }
+
+        try {
+            $this->productService->updateProductStatus($product, $request->status);
+
+            $message = $request->status === 'active' ? 'Product activated successfully' : 'Product deactivated successfully';
+
+            return redirect()->back()->with('success', $message);
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
         }
     }
 }

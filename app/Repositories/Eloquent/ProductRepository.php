@@ -74,8 +74,18 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function create(array $data): Product
     {
+        \Log::info('ProductRepository::create called with data:', $data);
+
         $product = Product::create($data);
+
+        \Log::info('Product created successfully in repository:', [
+            'id' => $product->id,
+            'name' => $product->name,
+            'seller_id' => $product->seller_id
+        ]);
+
         $this->clearProductCache();
+
         return $product;
     }
 

@@ -45,17 +45,18 @@ class Product extends Model
     {
         parent::boot();
 
+        // COMMENT OUT MODEL EVENTS - MENYEBABKAN TRANSACTION ABORT
         // Auto-generate slug from name when creating a product
-        static::creating(function ($product) {
-            $product->slug = $product->generateUniqueSlug($product->name);
-        });
+        // static::creating(function ($product) {
+        //     $product->slug = $product->generateUniqueSlug($product->name);
+        // });
 
         // Update slug when name changes
-        static::updating(function ($product) {
-            if ($product->isDirty('name')) {
-                $product->slug = $product->generateUniqueSlug($product->name);
-            }
-        });
+        // static::updating(function ($product) {
+        //     if ($product->isDirty('name')) {
+        //         $product->slug = $product->generateUniqueSlug($product->name);
+        //     }
+        // });
     }
 
     /**
