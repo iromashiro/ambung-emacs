@@ -15,7 +15,7 @@
                 <!-- Search Bar -->
                 <form class="d-flex mx-auto" style="width: 50%;" action="{{ route('products.index') }}" method="GET">
                     <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Search products..." name="search"
+                        <input type="text" class="form-control" placeholder="Search products...." name="search"
                             value="{{ request('search') }}">
                         <button class="btn btn-primary" type="submit">
                             <i class="fas fa-search"></i>
