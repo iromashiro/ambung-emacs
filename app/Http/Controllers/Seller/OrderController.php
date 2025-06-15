@@ -12,21 +12,14 @@ class OrderController extends Controller
 {
     protected $orderService;
 
-    public function __construct(/* dependencies */)
+    public function __construct(OrderService $orderService)
     {
-        // Set dependencies first
-        $this->serviceProperty = $service;
+        $this->orderService = $orderService;
 
-        // Then apply middleware in correct order
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
-
-        // Only add store.owner middleware if the controller requires active store
-        // DON'T add to StoreController (needed for creating store)
-        // DO add to OrderController, ReportController, ProductController
-        $this->middleware('store.owner')->except(['create', 'store']); // if needed
+        $this->middleware('store.owner'); // Orders require active store
     }
-
     /**
      * Display a listing of orders.
      */

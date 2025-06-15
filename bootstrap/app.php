@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'store.owner' => \App\Http\Middleware\StoreOwnerMiddleware::class,
             'store.active' => \App\Http\Middleware\CheckStoreStatus::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
+            'seller.nostore' => \App\Http\Middleware\CheckSellerNoStore::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

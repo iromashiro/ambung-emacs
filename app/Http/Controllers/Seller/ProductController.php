@@ -18,7 +18,6 @@ class ProductController extends Controller
     {
         $this->productService = $productService;
 
-        // FIX: Use correct middleware order
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
         $this->middleware('store.owner'); // Products require active store

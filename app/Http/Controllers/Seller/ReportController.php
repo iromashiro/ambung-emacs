@@ -11,19 +11,13 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    public function __construct(/* dependencies */)
+    public function __construct(ReportService $reportService)
     {
-        // Set dependencies first
-        $this->serviceProperty = $service;
+        $this->reportService = $reportService;
 
-        // Then apply middleware in correct order
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
-
-        // Only add store.owner middleware if the controller requires active store
-        // DON'T add to StoreController (needed for creating store)
-        // DO add to OrderController, ReportController, ProductController
-        $this->middleware('store.owner')->except(['create', 'store']); // if needed
+        $this->middleware('store.owner'); // Reports require active store
     }
 
     /**

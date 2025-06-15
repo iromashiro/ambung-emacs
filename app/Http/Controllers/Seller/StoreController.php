@@ -11,19 +11,14 @@ use Illuminate\View\View;
 
 class StoreController extends Controller
 {
-    public function __construct(/* dependencies */)
-    {
-        // Set dependencies first
-        $this->serviceProperty = $service;
+    protected $storeService;
 
-        // Then apply middleware in correct order
+    public function __construct(StoreService $storeService)
+    {
+        $this->storeService = $storeService;
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
-
-        // Only add store.owner middleware if the controller requires active store
-        // DON'T add to StoreController (needed for creating store)
-        // DO add to OrderController, ReportController, ProductController
-        $this->middleware('store.owner')->except(['create', 'store']); // if needed
+        $this->middleware('store.owner'); // Products require active store
     }
 
     /**
@@ -55,8 +50,9 @@ class StoreController extends Controller
             return redirect()->route('seller.dashboard')
                 ->with('success', 'Store created successfully. Please wait for admin approval.');
         } catch (\Exception $e) {
+            \Log::error('Store creation error: ' . $e->getMessage());
             return redirect()->route('seller.store.create')
-                ->with('error', $e->getMessage());
+                ->with('error', 'Failed to create store. Please try again.');
         }
     }
 
@@ -99,8 +95,84 @@ class StoreController extends Controller
             return redirect()->route('seller.store.edit')
                 ->with('success', 'Store updated successfully');
         } catch (\Exception $e) {
+            \Log::error('Store update error: ' . $e->getMessage());
             return redirect()->route('seller.store.edit')
-                ->with('error', $e->getMessage());
+                ->with('error', 'Failed to update store. Please try again.');
+        }
+    }
+
+    /**
+     * Show store status for pending approval
+     */
+    public function status(): View
+    {
+        $store = auth()->user()->store;
+
+        if (!$store) {
+            return redirect()->route('seller.store.create')
+                ->with('error', 'You need to create a store first');
+        }
+
+        return view('seller.store.status', [
+            'store' => $store,
+        ]);
+    }
+
+    /**
+     * Show store details
+     */
+    public function show(): View
+    {
+        $store = auth()->user()->store;
+
+        if (!$store) {
+            return redirect()->route('seller.store.create')
+                ->with('error', 'You need to create a store first');
+        }
+
+        return view('seller.store.show', [
+            'store' => $store,
+        ]);
+    }
+
+    /**
+     * Show store setup form (for new sellers)
+     */
+    public function setup(): View
+    {
+        // Check if user already has a store
+        if (auth()->user()->store) {
+            return redirect()->route('seller.store.show')
+                ->with('info', 'You already have a store');
+        }
+
+        return view('seller.store.setup');
+    }
+
+    /**
+     * Store setup for new sellers
+     */
+    public function storeSetup(CreateStoreRequest $request): RedirectResponse
+    {
+        // Check if user already has a store
+        if (auth()->user()->store) {
+            return redirect()->route('seller.store.show')
+                ->with('info', 'You already have a store');
+        }
+
+        try {
+            $store = $this->storeService->createStore(
+                auth()->user(),
+                $request->validated(),
+                $request->file('logo')
+            );
+
+            return redirect()->route('seller.store.status')
+                ->with('success', 'Store setup completed! Please wait for admin approval.');
+        } catch (\Exception $e) {
+            \Log::error('Store setup error: ' . $e->getMessage());
+            return redirect()->route('seller.store.setup')
+                ->with('error', 'Failed to setup store. Please try again.');
         }
     }
 }

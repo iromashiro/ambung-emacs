@@ -19,14 +19,11 @@ class DashboardController extends Controller
         OrderService $orderService,
         ProductService $productService
     ) {
-        $this->reportService = $reportService;
-        $this->orderService = $orderService;
         $this->productService = $productService;
 
-        // FIX: Use correct middleware
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
-        // DON'T use store.owner middleware here
+        $this->middleware('store.owner'); // Products require active store
     }
 
     /**
