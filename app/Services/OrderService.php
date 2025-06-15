@@ -37,6 +37,21 @@ class OrderService
         return $order;
     }
 
+    /**
+     * Get orders by store - MISSING METHOD ADDED
+     */
+    public function getOrdersByStore($store, array $options = [])
+    {
+        $limit = $options['limit'] ?? 10;
+
+        return Order::whereHas('items.product', function ($q) use ($store) {
+            $q->where('seller_id', $store->seller_id);
+        })
+            ->with(['user', 'items.product'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($limit);
+    }
+
     public function getRecentOrders(User $user, array $filters = [])
     {
         $limit = $filters['limit'] ?? 5;

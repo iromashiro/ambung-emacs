@@ -43,7 +43,7 @@ Route::middleware('guest')->group(function () {
 // Authenticated Routes
 Route::middleware('auth')->group(function () {
     // Logout
-    Route::post('logout', [LoginController::class, 'logout'])->name('logout');
+    Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
     // Email Verification
     Route::get('email/verify', [VerificationController::class, 'show'])->name('verification.notice');

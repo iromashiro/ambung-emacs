@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Services\OrderService;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -15,13 +14,13 @@ class OrderController extends Controller
     public function __construct(OrderService $orderService)
     {
         $this->orderService = $orderService;
-
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
-        $this->middleware('store.owner'); // Orders require active store
+        $this->middleware('store.owner');
     }
+
     /**
-     * Display a listing of orders.
+     * Display a listing of orders
      */
     public function index(Request $request): View
     {
@@ -32,31 +31,106 @@ class OrderController extends Controller
                 ->with('error', 'You need to create a store first');
         }
 
-        $status = $request->input('status');
-        $perPage = $request->input('per_page', 10);
-
-        if ($status) {
-            $orders = app('App\Repositories\Interfaces\OrderRepositoryInterface')
-                ->findByStoreAndStatusWithPagination($store->id, $status, $perPage);
-        } else {
-            $orders = $this->orderService->getOrdersByStore($store->id, $perPage);
-        }
+        $orders = $this->orderService->getOrdersByStore($store);
 
         return view('seller.orders.index', [
             'orders' => $orders,
-            'status' => $status,
         ]);
     }
 
     /**
-     * Display the specified order.
+     * Display new orders
+     */
+    public function new(Request $request): View
+    {
+        $store = auth()->user()->store;
+
+        if (!$store) {
+            return redirect()->route('seller.store.create')
+                ->with('error', 'You need to create a store first');
+        }
+
+        $orders = $this->orderService->getOrdersByStore($store, [
+            'status' => 'new',
+            'limit' => 20
+        ]);
+
+        return view('seller.orders.new', [
+            'orders' => $orders,
+        ]);
+    }
+
+    /**
+     * Display processing orders
+     */
+    public function processing(Request $request): View
+    {
+        $store = auth()->user()->store;
+
+        $orders = $this->orderService->getOrdersByStore($store, [
+            'status' => 'processing',
+            'limit' => 20
+        ]);
+
+        return view('seller.orders.processing', [
+            'orders' => $orders,
+        ]);
+    }
+
+    /**
+     * Display completed orders
+     */
+    public function completed(Request $request): View
+    {
+        $store = auth()->user()->store;
+
+        $orders = $this->orderService->getOrdersByStore($store, [
+            'status' => 'completed',
+            'limit' => 20
+        ]);
+
+        return view('seller.orders.completed', [
+            'orders' => $orders,
+        ]);
+    }
+
+    /**
+     * Display canceled orders
+     */
+    public function canceled(Request $request): View
+    {
+        $store = auth()->user()->store;
+
+        $orders = $this->orderService->getOrdersByStore($store, [
+            'status' => 'canceled',
+            'limit' => 20
+        ]);
+
+        return view('seller.orders.canceled', [
+            'orders' => $orders,
+        ]);
+    }
+
+    /**
+     * Show the specified order - FIX TYPE MISMATCH
      */
     public function show(string $id): View
     {
-        $order = $this->orderService->getOrderById($id);
+        // Convert string to int to match OrderService::getOrderById signature
+        $orderId = (int) $id;
+        $order = $this->orderService->getOrderById($orderId);
+
+        if (!$order) {
+            abort(404, 'Order not found');
+        }
 
         // Check if user has permission to view this order
-        if (auth()->user()->store->id !== $order->store_id) {
+        $store = auth()->user()->store;
+        $hasPermission = $order->items->some(function ($item) use ($store) {
+            return $item->product->seller_id === $store->seller_id;
+        });
+
+        if (!$hasPermission) {
             abort(403, 'You do not have permission to view this order');
         }
 
@@ -66,33 +140,32 @@ class OrderController extends Controller
     }
 
     /**
-     * Update order status.
+     * Update order status
      */
-    public function updateStatus(Request $request, string $id): RedirectResponse
+    public function updateStatus(Request $request, string $id)
     {
-        $validated = $request->validate([
-            'status' => ['required', 'string', 'in:ACCEPTED,DISPATCHED,DELIVERED,CANCELED'],
+        $request->validate([
+            'status' => 'required|in:accepted,dispatched,delivered,canceled'
         ]);
 
-        $order = $this->orderService->getOrderById($id);
+        // Convert string to int to match OrderService::getOrderById signature
+        $orderId = (int) $id;
+        $order = $this->orderService->getOrderById($orderId);
 
-        // Check if user has permission to update this order
-        if (auth()->user()->store->id !== $order->store_id) {
-            abort(403, 'You do not have permission to update this order');
+        if (!$order) {
+            return redirect()->back()->with('error', 'Order not found');
         }
 
         try {
-            $this->orderService->updateStatus(
+            $this->orderService->updateOrderStatus(
                 $order,
-                $validated['status'],
+                $request->status,
                 auth()->user()
             );
 
-            return redirect()->route('seller.orders.show', $order->id)
-                ->with('success', 'Order status updated successfully');
+            return redirect()->back()->with('success', 'Order status updated successfully');
         } catch (\Exception $e) {
-            return redirect()->route('seller.orders.show', $order->id)
-                ->with('error', $e->getMessage());
+            return redirect()->back()->with('error', $e->getMessage());
         }
     }
 }

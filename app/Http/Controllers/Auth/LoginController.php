@@ -51,6 +51,22 @@ class LoginController extends Controller
     }
 
     /**
+     * Handle login request (alias for store method)
+     */
+    public function login(LoginRequest $request): RedirectResponse
+    {
+        return $this->store($request);
+    }
+
+    /**
+     * Handle logout request (alias for destroy method)
+     */
+    public function logout(Request $request): RedirectResponse
+    {
+        return $this->destroy($request);
+    }
+
+    /**
      * Destroy an authenticated session.
      */
     public function destroy(Request $request): RedirectResponse

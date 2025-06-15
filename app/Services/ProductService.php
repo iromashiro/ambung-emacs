@@ -28,6 +28,17 @@ class ProductService
     }
 
     /**
+     * Get products by store - MISSING METHOD ADDED
+     */
+    public function getProductsByStore($store, int $perPage = 10)
+    {
+        return Product::where('seller_id', $store->seller_id)
+            ->with(['category', 'images'])
+            ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+    }
+
+    /**
      * Get active products with filters and pagination
      */
     public function getActiveProducts(array $filters = [], int $perPage = 12)
