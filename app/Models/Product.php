@@ -39,27 +39,6 @@ class Product extends Model
     ];
 
     /**
-     * Boot the model.
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        // DISABLE MODEL EVENTS - MENYEBABKAN TRANSACTION ABORT DI POSTGRESQL
-        // Auto-generate slug from name when creating a product
-        // static::creating(function ($product) {
-        //     $product->slug = $product->generateUniqueSlug($product->name);
-        // });
-
-        // Update slug when name changes
-        // static::updating(function ($product) {
-        //     if ($product->isDirty('name')) {
-        //         $product->slug = $product->generateUniqueSlug($product->name);
-        //     }
-        // });
-    }
-
-    /**
      * Generate a unique slug from the given name.
      *
      * @param string $name

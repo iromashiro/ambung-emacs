@@ -7,6 +7,7 @@ use App\Repositories\Interfaces\ProductRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ProductRepository implements ProductRepositoryInterface
 {
@@ -76,17 +77,23 @@ class ProductRepository implements ProductRepositoryInterface
     {
         \Log::info('ProductRepository::create called with data:', $data);
 
-        $product = Product::create($data);
+        try {
+            $product = Product::create($data);
 
-        \Log::info('Product created successfully in repository:', [
-            'id' => $product->id,
-            'name' => $product->name,
-            'seller_id' => $product->seller_id
-        ]);
+            \Log::info('Product created in repository:', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'seller_id' => $product->seller_id
+            ]);
 
-        $this->clearProductCache();
-
-        return $product;
+            return $product;
+        } catch (\Exception $e) {
+            \Log::error('Error in ProductRepository::create:', [
+                'error' => $e->getMessage(),
+                'data' => $data
+            ]);
+            throw $e;
+        }
     }
 
     public function update(Product $product, array $data): bool

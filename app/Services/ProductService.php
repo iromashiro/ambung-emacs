@@ -12,6 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Intervention\Image\Facades\Image;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Cache;
 
 class ProductService
 {
@@ -129,11 +130,11 @@ class ProductService
     {
         Gate::authorize('create', Product::class);
 
-        return DB::transaction(function () use ($data, $seller) {
+        try {
             $productData = [
                 'seller_id' => $seller->id,
                 'name' => $data['name'],
-                'slug' => Str::slug($data['name']) . '-' . Str::random(6), // Manual slug generation
+                'slug' => $this->generateUniqueSlug($data['name']),
                 'description' => $data['description'],
                 'price' => $data['price'],
                 'stock' => $data['stock'] ?? 0,
@@ -142,10 +143,10 @@ class ProductService
                 'is_featured' => $data['is_featured'] ?? false
             ];
 
-            \Log::info('Creating product with clean data:', $productData);
+            \Log::info('Creating product with validated data:', $productData);
 
-            // Create product using repository
-            $product = $this->productRepository->create($productData);
+            // CREATE LANGSUNG DENGAN ELOQUENT
+            $product = Product::create($productData);
 
             \Log::info('Product created successfully:', [
                 'id' => $product->id,
@@ -155,11 +156,48 @@ class ProductService
 
             // Handle images if provided
             if (isset($data['images']) && is_array($data['images'])) {
+                \Log::info('Processing product images:', ['count' => count($data['images'])]);
                 $this->handleProductImages($product, $data['images']);
             }
 
+            // Clear relevant caches
+            $this->clearProductRelatedCache();
+
             return $product;
-        });
+        } catch (\Exception $e) {
+            \Log::error('Error creating product:', [
+                'error' => $e->getMessage(),
+                'data' => $data,
+                'seller_id' => $seller->id
+            ]);
+            throw $e;
+        }
+    }
+
+    private function generateUniqueSlug(string $name): string
+    {
+        $baseSlug = Str::slug($name);
+        $slug = $baseSlug;
+        $counter = 1;
+
+        while (Product::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    private function clearProductRelatedCache(): void
+    {
+        try {
+            Cache::forget('products.featured');
+            Cache::forget('categories.with.products');
+            // Add other cache keys as needed
+        } catch (\Exception $e) {
+            \Log::warning('Failed to clear product cache:', ['error' => $e->getMessage()]);
+            // Don't throw exception, just log warning
+        }
     }
 
     public function updateProduct(Product $product, array $data): Product
