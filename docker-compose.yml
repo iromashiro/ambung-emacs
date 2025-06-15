@@ -1,0 +1,25 @@
+services:
+    frankenphp:
+        # change container name
+        container_name: ambung
+        restart: always
+        build:
+            context: .
+        # octane setup
+        entrypoint: php artisan octane:frankenphp --workers=20 --max-requests=1000
+
+        networks:
+            - caddy # network to "caddy"
+
+        volumes:
+            - .:/app
+            - /etc/ssl/certs/mekab.crt:/etc/caddy/ssl/mekab.crt:ro
+            - /etc/ssl/certs/mekab-bundle.crt:/etc/caddy/ssl/mekab-bundle.crt:ro
+            - /etc/ssl/private/mekab.key:/etc/caddy/ssl/mekab.key:ro
+
+        environment:
+            SERVER_NAME: ":80"
+
+networks:
+    caddy:
+        external: true

@@ -266,7 +266,7 @@
 
     <!-- Bottom Row -->
     <div class="row g-4">
-        <!-- Recent Orders -->
+        <!-- Recent Orders Section - UPDATE INI -->
         <div class="col-lg-8">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 pb-0">
@@ -286,7 +286,7 @@
                                     <th class="border-0">Order</th>
                                     <th class="border-0">Customer</th>
                                     <th class="border-0">Products</th>
-                                    <th class="border-0">Total</th>
+                                    <th class="border-0">Your Total</th>
                                     <th class="border-0">Status</th>
                                     <th class="border-0">Date</th>
                                     <th class="border-0">Actions</th>
@@ -314,7 +314,8 @@
                                         <span class="text-muted">No items</span>
                                         @endif
                                     </td>
-                                    <td class="fw-bold">Rp {{ number_format($order->total_amount ?: 0, 0, ',', '.') }}
+                                    <td class="fw-bold">
+                                        Rp {{ number_format($order->seller_total ?? 0, 0, ',', '.') }}
                                     </td>
                                     <td>
                                         @if($order->status === 'new')
@@ -414,7 +415,7 @@
 </div>
 @endsection
 
-@if($store && $store->status === 'approved')
+@if($store && $store->status === 'active')
 @push('styles')
 <style>
     .card {
@@ -431,6 +432,12 @@
 @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+    // Check if Chart.js is loaded
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js is not loaded!');
+        return;
+    }
+
     // Prepare data with proper fallbacks
     let salesData = [];
     let orderStatusData = [];
@@ -462,6 +469,7 @@
         orderStatusData = [0, 0, 0, 0, 0];
     }
 
+    console.log('Chart.js version:', Chart.version);
     console.log('Sales Data:', salesData);
     console.log('Order Status Data:', orderStatusData);
 
@@ -540,6 +548,8 @@
             console.log('Sales chart created successfully');
         } catch (e) {
             console.error('Error creating sales chart:', e);
+            // Show fallback message
+            salesCtx.parentElement.innerHTML = '<div class="text-center py-5"><i class="fas fa-chart-line fa-3x text-muted mb-3"></i><h6 class="text-muted">Chart unavailable</h6><p class="text-muted mb-0">Unable to load sales chart</p></div>';
         }
     } else {
         console.error('Sales chart canvas not found');
@@ -606,6 +616,8 @@
             console.log('Order status chart created successfully');
         } catch (e) {
             console.error('Error creating order status chart:', e);
+            // Show fallback message
+            orderStatusCtx.parentElement.innerHTML = '<div class="text-center py-5"><i class="fas fa-chart-pie fa-3x text-muted mb-3"></i><h6 class="text-muted">Chart unavailable</h6><p class="text-muted mb-0">Unable to load order status chart</p></div>';
         }
     } else {
         console.error('Order status chart canvas not found');
@@ -631,7 +643,6 @@ function loadSalesDataByPeriod(period) {
     // Show loading state
     const salesChart = Chart.getChart('salesChart');
     if (salesChart) {
-        // You can implement loading state here
         console.log('Chart found, ready for data update');
     }
 

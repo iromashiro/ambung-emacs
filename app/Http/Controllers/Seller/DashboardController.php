@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Seller;
 
 use App\Http\Controllers\Controller;
 use App\Services\OrderService;
-use App\Services\ProductService;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -15,15 +14,10 @@ use Carbon\Carbon;
 class DashboardController extends Controller
 {
     protected $orderService;
-    protected $productService;
 
-    public function __construct(
-        OrderService $orderService,
-        ProductService $productService
-    ) {
+    public function __construct(OrderService $orderService)
+    {
         $this->orderService = $orderService;
-        $this->productService = $productService;
-
         $this->middleware(['auth', 'verified']);
         $this->middleware('role:seller');
         $this->middleware('store.owner');
@@ -37,125 +31,227 @@ class DashboardController extends Controller
         $user = auth()->user();
         $store = $user->store;
 
-        // Initialize default data
-        $data = [
-            'store' => $store,
-            'stats' => [
-                'total_products' => 0,
-                'total_orders' => 0,
-                'total_revenue' => 0,
-                'average_rating' => 0,
-                'total_reviews' => 0,
-                'product_growth' => 0,
-                'order_growth' => 0,
-                'revenue_growth' => 0,
-            ],
-            'recentOrders' => collect(),
-            'lowStockProducts' => collect(),
-            'salesData' => [0, 0, 0, 0, 0, 0, 0],
-            'orderStatusData' => [0, 0, 0, 0, 0],
-        ];
-
         // If user doesn't have store, return basic view
         if (!$store) {
-            return view('seller.dashboard', $data);
+            return view('seller.dashboard', [
+                'store' => null,
+                'stats' => $this->getDefaultStats(),
+                'recentOrders' => collect(),
+                'lowStockProducts' => collect(),
+                'salesData' => [0, 0, 0, 0, 0, 0, 0],
+                'orderStatusData' => [0, 0, 0, 0, 0],
+            ]);
         }
 
         // If store is not approved, return basic view with store info
-        if ($store->status !== 'approved') {
-            return view('seller.dashboard', $data);
+        if ($store->status !== 'active') {
+            return view('seller.dashboard', [
+                'store' => $store,
+                'stats' => $this->getDefaultStats(),
+                'recentOrders' => collect(),
+                'lowStockProducts' => collect(),
+                'salesData' => [0, 0, 0, 0, 0, 0, 0],
+                'orderStatusData' => [0, 0, 0, 0, 0],
+            ]);
         }
 
         // Store is approved, load full dashboard data
         try {
+            $sellerId = $user->id;
+
+            // Debug: Check seller ID
+            Log::info('Dashboard Debug - Seller ID', ['seller_id' => $sellerId, 'user_id' => $user->id, 'store_id' => $store->id]);
+
             // Get performance stats
-            $stats = $this->getPerformanceStats($store);
-            $data['stats'] = array_merge($data['stats'], $stats);
+            $stats = $this->getPerformanceStats($sellerId);
 
-            // Get recent orders
-            $data['recentOrders'] = $this->getRecentOrders($store);
+            // Get recent orders (last 5)
+            $recentOrders = $this->getRecentOrders($sellerId);
 
-            // Get low stock products
-            $data['lowStockProducts'] = $this->getLowStockProducts($store);
+            // Get low stock products (stock <= 10)
+            $lowStockProducts = $this->getLowStockProducts($sellerId);
 
             // Get chart data
-            $data['salesData'] = $this->getSalesData($store);
-            $data['orderStatusData'] = $this->getOrderStatusData($store);
+            $salesData = $this->getSalesData($sellerId);
+            $orderStatusData = $this->getOrderStatusData($sellerId);
+
+            // Debug logging
+            Log::info('Dashboard Data Debug', [
+                'seller_id' => $sellerId,
+                'store_id' => $store->id,
+                'stats' => $stats,
+                'recent_orders_count' => $recentOrders->count(),
+                'sales_data' => $salesData,
+                'order_status_data' => $orderStatusData
+            ]);
+
+            return view('seller.dashboard', [
+                'store' => $store,
+                'stats' => $stats,
+                'recentOrders' => $recentOrders,
+                'lowStockProducts' => $lowStockProducts,
+                'salesData' => $salesData,
+                'orderStatusData' => $orderStatusData,
+            ]);
         } catch (\Exception $e) {
             Log::error('Seller dashboard error: ' . $e->getMessage(), [
                 'user_id' => $user->id,
                 'store_id' => $store->id ?? null,
                 'trace' => $e->getTraceAsString()
             ]);
-        }
 
-        return view('seller.dashboard', $data);
+            // Return with default data if error occurs
+            return view('seller.dashboard', [
+                'store' => $store,
+                'stats' => $this->getDefaultStats(),
+                'recentOrders' => collect(),
+                'lowStockProducts' => collect(),
+                'salesData' => [0, 0, 0, 0, 0, 0, 0],
+                'orderStatusData' => [0, 0, 0, 0, 0],
+            ]);
+        }
     }
+
+    /**
+     * Get default stats
+     */
+
 
     /**
      * Get performance statistics for the seller
      */
-    private function getPerformanceStats($store): array
+    private function getPerformanceStats($sellerId): array
     {
         try {
-            $sellerId = $store->seller_id;
+            // Debug: Check if products exist for this seller
+            $productCount = Product::where('seller_id', $sellerId)->count();
+            Log::info('Products count for seller', ['seller_id' => $sellerId, 'count' => $productCount]);
+
+            // Debug: Check if orders exist
+            $orderCount = Order::whereHas('items', function ($query) use ($sellerId) {
+                $query->whereHas('product', function ($q) use ($sellerId) {
+                    $q->where('seller_id', $sellerId);
+                });
+            })->count();
+            Log::info('Orders count for seller', ['seller_id' => $sellerId, 'count' => $orderCount]);
+
+            // If no products, return zeros
+            if ($productCount === 0) {
+                Log::info('No products found for seller', ['seller_id' => $sellerId]);
+                return $this->getDefaultStats();
+            }
+
             $currentMonth = Carbon::now()->startOfMonth();
             $lastMonth = Carbon::now()->subMonth()->startOfMonth();
+            $lastMonthEnd = Carbon::now()->startOfMonth()->subSecond();
 
-            // Get current month stats
-            $currentStats = $this->getStatsForPeriod($sellerId, $currentMonth, Carbon::now());
-            $lastMonthStats = $this->getStatsForPeriod($sellerId, $lastMonth, $currentMonth);
+            // Current month stats
+            $currentProducts = Product::where('seller_id', $sellerId)
+                ->whereBetween('created_at', [$currentMonth, Carbon::now()])
+                ->count();
+
+            // FIX: Query orders yang benar - coba beberapa cara
+            $currentOrdersQuery = Order::whereHas('items', function ($query) use ($sellerId) {
+                $query->whereHas('product', function ($q) use ($sellerId) {
+                    $q->where('seller_id', $sellerId);
+                });
+            })->whereBetween('created_at', [$currentMonth, Carbon::now()]);
+
+            $currentOrders = $currentOrdersQuery->count();
+
+            // FIX: Calculate revenue dari order items
+            $currentRevenue = $this->calculateSellerRevenue($sellerId, $currentMonth, Carbon::now());
+
+            // Last month stats for comparison
+            $lastMonthProducts = Product::where('seller_id', $sellerId)
+                ->whereBetween('created_at', [$lastMonth, $lastMonthEnd])
+                ->count();
+
+            $lastMonthOrders = Order::whereHas('items', function ($query) use ($sellerId) {
+                $query->whereHas('product', function ($q) use ($sellerId) {
+                    $q->where('seller_id', $sellerId);
+                });
+            })->whereBetween('created_at', [$lastMonth, $lastMonthEnd])->count();
+
+            $lastMonthRevenue = $this->calculateSellerRevenue($sellerId, $lastMonth, $lastMonthEnd);
+
+            // Total stats (all time)
+            $totalProducts = Product::where('seller_id', $sellerId)->count();
+
+            $totalOrders = Order::whereHas('items', function ($query) use ($sellerId) {
+                $query->whereHas('product', function ($q) use ($sellerId) {
+                    $q->where('seller_id', $sellerId);
+                });
+            })->count();
+
+            $totalRevenue = $this->calculateSellerRevenue($sellerId);
+
+            // Debug log the calculations
+            Log::info('Stats calculation debug', [
+                'seller_id' => $sellerId,
+                'total_products' => $totalProducts,
+                'total_orders' => $totalOrders,
+                'total_revenue' => $totalRevenue,
+                'current_orders' => $currentOrders,
+                'current_revenue' => $currentRevenue
+            ]);
 
             // Calculate growth percentages
-            $productGrowth = $this->calculateGrowth($currentStats['products'], $lastMonthStats['products']);
-            $orderGrowth = $this->calculateGrowth($currentStats['orders'], $lastMonthStats['orders']);
-            $revenueGrowth = $this->calculateGrowth($currentStats['revenue'], $lastMonthStats['revenue']);
+            $productGrowth = $this->calculateGrowth($currentProducts, $lastMonthProducts);
+            $orderGrowth = $this->calculateGrowth($currentOrders, $lastMonthOrders);
+            $revenueGrowth = $this->calculateGrowth($currentRevenue, $lastMonthRevenue);
 
             return [
-                'total_products' => $currentStats['products'],
-                'total_orders' => $currentStats['orders'],
-                'total_revenue' => $currentStats['revenue'],
-                'average_rating' => $currentStats['rating'],
-                'total_reviews' => $currentStats['reviews'],
+                'total_products' => $totalProducts,
+                'total_orders' => $totalOrders,
+                'total_revenue' => $totalRevenue,
+                'average_rating' => 4.5, // Placeholder
+                'total_reviews' => 0, // Placeholder
                 'product_growth' => $productGrowth,
                 'order_growth' => $orderGrowth,
                 'revenue_growth' => $revenueGrowth,
             ];
         } catch (\Exception $e) {
-            Log::error('Error getting performance stats: ' . $e->getMessage());
-            return [];
+            Log::error('Error getting performance stats: ' . $e->getMessage(), [
+                'seller_id' => $sellerId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->getDefaultStats();
         }
     }
 
     /**
-     * Get stats for specific period
+     * Calculate seller revenue from order items
      */
-    private function getStatsForPeriod($sellerId, $startDate, $endDate): array
+    private function calculateSellerRevenue($sellerId, $startDate = null, $endDate = null): float
     {
-        // Total products
-        $totalProducts = Product::where('seller_id', $sellerId)
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->count();
+        try {
+            $query = DB::table('order_items')
+                ->join('products', 'order_items.product_id', '=', 'products.id')
+                ->join('orders', 'order_items.order_id', '=', 'orders.id')
+                ->where('products.seller_id', $sellerId);
 
-        // Total orders and revenue
-        $orderStats = Order::whereHas('items.product', function ($q) use ($sellerId) {
-            $q->where('seller_id', $sellerId);
-        })
-            ->whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('COUNT(*) as total_orders, SUM(total_amount) as total_revenue')
-            ->first();
+            if ($startDate && $endDate) {
+                $query->whereBetween('orders.created_at', [$startDate, $endDate]);
+            }
 
-        // Average rating (simplified - you might want to implement proper review system)
-        $averageRating = 4.5; // Placeholder
-        $totalReviews = 0; // Placeholder
+            $revenue = $query->sum(DB::raw('order_items.quantity * order_items.price'));
 
-        return [
-            'products' => $totalProducts,
-            'orders' => $orderStats->total_orders ?? 0,
-            'revenue' => $orderStats->total_revenue ?? 0,
-            'rating' => $averageRating,
-            'reviews' => $totalReviews,
-        ];
+            Log::info('Revenue calculation', [
+                'seller_id' => $sellerId,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'revenue' => $revenue
+            ]);
+
+            return (float) ($revenue ?: 0);
+        } catch (\Exception $e) {
+            Log::error('Error calculating seller revenue: ' . $e->getMessage(), [
+                'seller_id' => $sellerId,
+                'trace' => $e->getTraceAsString()
+            ]);
+            return 0.0;
+        }
     }
 
     /**
@@ -173,18 +269,54 @@ class DashboardController extends Controller
     /**
      * Get recent orders for the seller
      */
-    private function getRecentOrders($store)
+    private function getRecentOrders($sellerId)
     {
         try {
-            return Order::whereHas('items.product', function ($q) use ($store) {
-                $q->where('seller_id', $store->seller_id);
+            $orders = Order::whereHas('items', function ($query) use ($sellerId) {
+                $query->whereHas('product', function ($q) use ($sellerId) {
+                    $q->where('seller_id', $sellerId);
+                });
             })
-                ->with(['user', 'items.product'])
+                ->with([
+                    'user:id,name,email',
+                    'items' => function ($query) use ($sellerId) {
+                        $query->whereHas('product', function ($q) use ($sellerId) {
+                            $q->where('seller_id', $sellerId);
+                        });
+                    },
+                    'items.product:id,name,seller_id'
+                ])
                 ->orderBy('created_at', 'desc')
                 ->limit(5)
-                ->get();
+                ->get()
+                ->map(function ($order) {
+                    // Calculate total amount for this seller's items only
+                    $sellerTotal = $order->items->sum(function ($item) {
+                        return $item->quantity * $item->price;
+                    });
+                    $order->seller_total = $sellerTotal;
+                    return $order;
+                });
+
+            Log::info('Recent orders debug', [
+                'seller_id' => $sellerId,
+                'orders_count' => $orders->count(),
+                'orders' => $orders->map(function ($order) {
+                    return [
+                        'id' => $order->id,
+                        'status' => $order->status,
+                        'seller_total' => $order->seller_total,
+                        'items_count' => $order->items->count()
+                    ];
+                })
+            ]);
+
+            return $orders;
         } catch (\Exception $e) {
-            Log::error('Error getting recent orders: ' . $e->getMessage());
+            Log::error('Error getting recent orders: ' . $e->getMessage(), [
+                'seller_id' => $sellerId,
+                'trace' => $e->getTraceAsString()
+            ]);
             return collect();
         }
     }
@@ -192,11 +324,11 @@ class DashboardController extends Controller
     /**
      * Get low stock products for the seller
      */
-    private function getLowStockProducts($store)
+    private function getLowStockProducts($sellerId)
     {
         try {
-            return Product::where('seller_id', $store->seller_id)
-                ->where('stock', '<', 10)
+            return Product::where('seller_id', $sellerId)
+                ->where('stock', '<=', 10)
                 ->orderBy('stock', 'asc')
                 ->limit(5)
                 ->get();
@@ -209,24 +341,23 @@ class DashboardController extends Controller
     /**
      * Get sales data for chart (last 7 days)
      */
-    private function getSalesData($store): array
+    private function getSalesData($sellerId): array
     {
         try {
             $salesData = [];
-            $sellerId = $store->seller_id;
 
             for ($i = 6; $i >= 0; $i--) {
                 $date = Carbon::now()->subDays($i)->startOfDay();
                 $nextDate = $date->copy()->addDay();
 
-                $dailySales = Order::whereHas('items.product', function ($q) use ($sellerId) {
-                    $q->where('seller_id', $sellerId);
-                })
-                    ->whereBetween('created_at', [$date, $nextDate])
-                    ->sum('total_amount');
-
-                $salesData[] = $dailySales ?? 0;
+                $dailySales = $this->calculateSellerRevenue($sellerId, $date, $nextDate);
+                $salesData[] = (float) $dailySales;
             }
+
+            Log::info('Sales data debug', [
+                'seller_id' => $sellerId,
+                'sales_data' => $salesData
+            ]);
 
             return $salesData;
         } catch (\Exception $e) {
@@ -238,26 +369,31 @@ class DashboardController extends Controller
     /**
      * Get order status data for chart
      */
-    private function getOrderStatusData($store): array
+    private function getOrderStatusData($sellerId): array
     {
         try {
-            $sellerId = $store->seller_id;
-
-            $statusCounts = Order::whereHas('items.product', function ($q) use ($sellerId) {
-                $q->where('seller_id', $sellerId);
+            $statusCounts = Order::whereHas('items', function ($query) use ($sellerId) {
+                $query->whereHas('product', function ($q) use ($sellerId) {
+                    $q->where('seller_id', $sellerId);
+                });
             })
                 ->selectRaw('status, COUNT(*) as count')
                 ->groupBy('status')
                 ->pluck('count', 'status')
                 ->toArray();
 
+            Log::info('Order status data debug', [
+                'seller_id' => $sellerId,
+                'status_counts' => $statusCounts
+            ]);
+
             // Return in order: new, accepted, dispatched, delivered, canceled
             return [
-                $statusCounts['new'] ?? 0,
-                $statusCounts['accepted'] ?? 0,
-                $statusCounts['dispatched'] ?? 0,
-                $statusCounts['delivered'] ?? 0,
-                $statusCounts['canceled'] ?? 0,
+                (int) ($statusCounts['new'] ?? 0),
+                (int) ($statusCounts['accepted'] ?? 0),
+                (int) ($statusCounts['dispatched'] ?? 0),
+                (int) ($statusCounts['delivered'] ?? 0),
+                (int) ($statusCounts['canceled'] ?? 0),
             ];
         } catch (\Exception $e) {
             Log::error('Error getting order status data: ' . $e->getMessage());

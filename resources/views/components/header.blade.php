@@ -2,7 +2,8 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm py-3">
         <div class="container">
             <a class="navbar-brand" href="{{ route('home') }}">
-                <img src="{{ asset('images/logo.png') }}" alt="Ambung e-MAC" height="40">
+                <img src="{{ asset('images/logo.png') }}" alt="Ambung e-MAC" height="70">
+                <span style="font: bold">Ambung e-MAC's</span>
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"

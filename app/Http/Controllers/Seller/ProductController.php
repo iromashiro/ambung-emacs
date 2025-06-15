@@ -39,8 +39,23 @@ class ProductController extends Controller
         $products = $this->productService->getProductsByStore($store, $perPage);
 
         return view('seller.products.index', [
+            'stats' => $this->getDefaultStats(),
             'products' => $products,
         ]);
+    }
+
+    private function getDefaultStats(): array
+    {
+        return [
+            'total_products' => 0,
+            'total_orders' => 0,
+            'total_revenue' => 0,
+            'average_rating' => 4.5,
+            'total_reviews' => 0,
+            'product_growth' => 0,
+            'order_growth' => 0,
+            'revenue_growth' => 0,
+        ];
     }
 
     /**
