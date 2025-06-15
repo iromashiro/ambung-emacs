@@ -43,38 +43,24 @@
                                     @enderror
                                 </div>
 
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="category_id" class="form-label">Category <span
-                                                    class="text-danger">*</span></label>
-                                            <select class="form-select @error('category_id') is-invalid @enderror"
-                                                id="category_id" name="category_id" required>
-                                                <option value="">Select Category</option>
-                                                @if(isset($categories))
-                                                @foreach($categories as $category)
-                                                <option value="{{ $category->id }}"
-                                                    {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
-                                                    {{ $category->name }}
-                                                </option>
-                                                @endforeach
-                                                @endif
-                                            </select>
-                                            @error('category_id')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="sku" class="form-label">SKU</label>
-                                            <input type="text" class="form-control @error('sku') is-invalid @enderror"
-                                                id="sku" name="sku" value="{{ old('sku', $product->sku) }}">
-                                            @error('sku')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
+                                <div class="mb-3">
+                                    <label for="category_id" class="form-label">Category <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select @error('category_id') is-invalid @enderror"
+                                        id="category_id" name="category_id" required>
+                                        <option value="">Select Category</option>
+                                        @if(isset($categories))
+                                        @foreach($categories as $category)
+                                        <option value="{{ $category->id }}"
+                                            {{ old('category_id', $product->category_id) == $category->id ? 'selected' : '' }}>
+                                            {{ $category->name }}
+                                        </option>
+                                        @endforeach
+                                        @endif
+                                    </select>
+                                    @error('category_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
                                 </div>
 
                                 <div class="mb-3">
@@ -84,16 +70,6 @@
                                         id="description" name="description" rows="5"
                                         required>{{ old('description', $product->description) }}</textarea>
                                     @error('description')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="short_description" class="form-label">Short Description</label>
-                                    <textarea class="form-control @error('short_description') is-invalid @enderror"
-                                        id="short_description" name="short_description"
-                                        rows="2">{{ old('short_description', $product->short_description) }}</textarea>
-                                    @error('short_description')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -107,33 +83,23 @@
                             </div>
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="price" class="form-label">Price (Rp) <span
                                                     class="text-danger">*</span></label>
-                                            <input type="number"
-                                                class="form-control @error('price') is-invalid @enderror" id="price"
-                                                name="price" value="{{ old('price', $product->price) }}" min="0"
-                                                step="0.01" required>
-                                            @error('price')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
+                                            <div class="input-group">
+                                                <span class="input-group-text">Rp</span>
+                                                <input type="number"
+                                                    class="form-control @error('price') is-invalid @enderror" id="price"
+                                                    name="price" value="{{ old('price', $product->price) }}" min="0"
+                                                    step="0.01" required>
+                                                @error('price')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                                @enderror
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-4">
-                                        <div class="mb-3">
-                                            <label for="compare_price" class="form-label">Compare Price (Rp)</label>
-                                            <input type="number"
-                                                class="form-control @error('compare_price') is-invalid @enderror"
-                                                id="compare_price" name="compare_price"
-                                                value="{{ old('compare_price', $product->compare_price) }}" min="0"
-                                                step="0.01">
-                                            @error('compare_price')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                    <div class="col-md-4">
+                                    <div class="col-md-6">
                                         <div class="mb-3">
                                             <label for="stock" class="form-label">Stock Quantity <span
                                                     class="text-danger">*</span></label>
@@ -147,38 +113,10 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="weight" class="form-label">Weight (grams) <span
-                                                    class="text-danger">*</span></label>
-                                            <input type="number"
-                                                class="form-control @error('weight') is-invalid @enderror" id="weight"
-                                                name="weight" value="{{ old('weight', $product->weight) }}" min="0"
-                                                step="0.01" required>
-                                            @error('weight')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="dimensions" class="form-label">Dimensions (L x W x H cm)</label>
-                                            <input type="text"
-                                                class="form-control @error('dimensions') is-invalid @enderror"
-                                                id="dimensions" name="dimensions"
-                                                value="{{ old('dimensions', $product->dimensions) }}">
-                                            @error('dimensions')
-                                            <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
-                        <!-- Current Images -->
+                        <!-- Product Images -->
                         <div class="card mb-4">
                             <div class="card-header">
                                 <h5 class="card-title mb-0">Product Images</h5>
@@ -271,62 +209,6 @@
                             </div>
                         </div>
 
-                        <!-- Product Stats -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">Product Statistics</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row text-center">
-                                    <div class="col-6">
-                                        <h5 class="text-primary mb-1">{{ $product->views ?? 0 }}</h5>
-                                        <small class="text-muted">Views</small>
-                                    </div>
-                                    <div class="col-6">
-                                        <h5 class="text-success mb-1">{{ $product->orders_count ?? 0 }}</h5>
-                                        <small class="text-muted">Orders</small>
-                                    </div>
-                                </div>
-                                <hr>
-                                <div class="text-center">
-                                    <small class="text-muted">Created:
-                                        {{ $product->created_at->format('M d, Y') }}</small><br>
-                                    <small class="text-muted">Updated:
-                                        {{ $product->updated_at->format('M d, Y') }}</small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- SEO Settings -->
-                        <div class="card mb-4">
-                            <div class="card-header">
-                                <h6 class="card-title mb-0">SEO Settings</h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label for="meta_title" class="form-label">Meta Title</label>
-                                    <input type="text" class="form-control @error('meta_title') is-invalid @enderror"
-                                        id="meta_title" name="meta_title"
-                                        value="{{ old('meta_title', $product->meta_title) }}" maxlength="60">
-                                    @error('meta_title')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                    <small class="text-muted">Recommended: 50-60 characters</small>
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="meta_description" class="form-label">Meta Description</label>
-                                    <textarea class="form-control @error('meta_description') is-invalid @enderror"
-                                        id="meta_description" name="meta_description" rows="3"
-                                        maxlength="160">{{ old('meta_description', $product->meta_description) }}</textarea>
-                                    @error('meta_description')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                    <small class="text-muted">Recommended: 150-160 characters</small>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Action Buttons -->
                         <div class="card">
                             <div class="card-body">
@@ -353,34 +235,34 @@
 
 <script>
     document.getElementById('images').addEventListener('change', function(e) {
-    const preview = document.getElementById('imagePreview');
-    preview.innerHTML = '';
+        const preview = document.getElementById('imagePreview');
+        preview.innerHTML = '';
 
-    if (e.target.files.length > 0) {
-        preview.style.display = 'block';
+        if (e.target.files.length > 0) {
+            preview.style.display = 'block';
 
-        Array.from(e.target.files).forEach((file, index) => {
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const col = document.createElement('div');
-                    col.className = 'col-md-3';
-                    col.innerHTML = `
-                        <div class="card">
-                            <img src="${e.target.result}" class="card-img-top" style="height: 100px; object-fit: cover;" alt="Preview">
-                            <div class="card-body p-2">
-                                <small class="text-muted">${file.name}</small>
+            Array.from(e.target.files).forEach((file, index) => {
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const col = document.createElement('div');
+                        col.className = 'col-md-3';
+                        col.innerHTML = `
+                            <div class="card">
+                                <img src="${e.target.result}" class="card-img-top" style="height: 100px; object-fit: cover;" alt="Preview">
+                                <div class="card-body p-2">
+                                    <small class="text-muted">${file.name}</small>
+                                </div>
                             </div>
-                        </div>
-                    `;
-                    preview.appendChild(col);
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-    } else {
-        preview.style.display = 'none';
-    }
-});
+                        `;
+                        preview.appendChild(col);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        } else {
+            preview.style.display = 'none';
+        }
+    });
 </script>
 @endsection

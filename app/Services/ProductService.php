@@ -12,7 +12,7 @@ use Illuminate\Http\UploadedFile;
 use Intervention\Image\Facades\Image;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Cache;   // TAMBAH INI!
 
 class ProductService
 {
@@ -204,44 +204,128 @@ class ProductService
     {
         Gate::authorize('update', $product);
 
-        return DB::transaction(function () use ($product, $data) {
+        try {
             $updateData = [
                 'name' => $data['name'],
                 'description' => $data['description'],
                 'price' => $data['price'],
                 'stock' => $data['stock'],
                 'category_id' => $data['category_id'],
+                'status' => $data['status'] ?? $product->status, // TAMBAH STATUS
                 'is_featured' => $data['is_featured'] ?? $product->is_featured
             ];
 
+            \Log::info('Updating product with data:', [
+                'product_id' => $product->id,
+                'update_data' => $updateData
+            ]);
+
             // Update slug if name changed
             if ($product->name !== $data['name']) {
-                $updateData['slug'] = Str::slug($data['name']) . '-' . Str::random(6);
+                $updateData['slug'] = $this->generateUniqueSlug($data['name']);
             }
 
-            $this->productRepository->update($product, $updateData);
+            // UPDATE LANGSUNG TANPA TRANSACTION DAN REPOSITORY
+            $product->update($updateData);
 
+            \Log::info('Product updated successfully:', [
+                'id' => $product->id,
+                'name' => $product->name
+            ]);
+
+            // Handle images if provided
             if (isset($data['images']) && is_array($data['images'])) {
+                \Log::info('Processing updated product images:', ['count' => count($data['images'])]);
                 $this->handleProductImages($product, $data['images']);
             }
 
+            // Clear relevant caches
+            $this->clearProductRelatedCache();
+
+            // Return fresh model
             return $product->fresh();
-        });
+        } catch (\Exception $e) {
+            \Log::error('Error updating product:', [
+                'error' => $e->getMessage(),
+                'product_id' => $product->id,
+                'data' => $data
+            ]);
+            throw $e;
+        }
     }
 
+    /**
+     * Delete a product
+     */
     public function deleteProduct(Product $product): bool
     {
         Gate::authorize('delete', $product);
 
-        return DB::transaction(function () use ($product) {
-            // Delete product images
-            foreach ($product->images as $image) {
-                Storage::disk('public')->delete($image->path);
-                Storage::disk('public')->delete('thumbs/' . basename($image->path));
+        try {
+            \Log::info('Deleting product (soft delete):', [
+                'id' => $product->id,
+                'name' => $product->name,
+                'seller_id' => $product->seller_id
+            ]);
+
+            // CEK APAKAH PRODUK SUDAH PERNAH DIPESAN
+            $hasOrders = \DB::table('order_items')
+                ->where('product_id', $product->id)
+                ->exists();
+
+            if ($hasOrders) {
+                \Log::info('Product has orders, using soft delete:', [
+                    'product_id' => $product->id
+                ]);
+
+                // SOFT DELETE - Produk masih ada di database tapi hidden
+                $result = $product->delete(); // Ini akan soft delete
+
+                \Log::info('Product soft deleted successfully:', [
+                    'product_id' => $product->id,
+                    'deleted_at' => $product->deleted_at
+                ]);
+            } else {
+                \Log::info('Product has no orders, using hard delete:', [
+                    'product_id' => $product->id
+                ]);
+
+                // HARD DELETE - Hapus images dulu, lalu produk
+                if ($product->images()->exists()) {
+                    foreach ($product->images as $image) {
+                        // Delete physical file
+                        if (Storage::disk('public')->exists($image->path)) {
+                            Storage::disk('public')->delete($image->path);
+                        }
+                        // Delete thumbnail
+                        if (Storage::disk('public')->exists('thumbs/' . basename($image->path))) {
+                            Storage::disk('public')->delete('thumbs/' . basename($image->path));
+                        }
+                        // Delete image record
+                        $image->delete();
+                    }
+                }
+
+                // Force delete (permanent)
+                $result = $product->forceDelete();
+
+                \Log::info('Product hard deleted successfully:', [
+                    'product_id' => $product->id
+                ]);
             }
 
-            return $this->productRepository->delete($product);
-        });
+            // Clear caches
+            $this->clearProductRelatedCache();
+
+            return $result;
+        } catch (\Exception $e) {
+            \Log::error('Error deleting product:', [
+                'error' => $e->getMessage(),
+                'product_id' => $product->id,
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     public function updateProductStatus(Product $product, string $status): bool
