@@ -54,21 +54,15 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control @error('email') is-invalid @enderror" id="email"
-                                    name="email" value="{{ old('email') }}" required>
-                            </div>
-
-                            <div class="col-md-6">
                                 <label for="phone" class="form-label">Phone Number</label>
                                 <input type="tel" class="form-control @error('phone') is-invalid @enderror" id="phone"
                                     name="phone" value="{{ old('phone') }}" required>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="date_of_birth" class="form-label">Date of Birth</label>
-                                <input type="date" class="form-control @error('date_of_birth') is-invalid @enderror"
-                                    id="date_of_birth" name="date_of_birth" value="{{ old('date_of_birth') }}">
+                            <div class="col-md-12">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control @error('email') is-invalid @enderror" id="email"
+                                    name="email" value="{{ old('email') }}" required>
                             </div>
 
                             <div class="col-md-6">

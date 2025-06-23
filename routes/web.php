@@ -20,6 +20,29 @@ use App\Http\Controllers\Web\ProductController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
+// ADD ROUTE DASHBOARD TANPA HOME
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', function () {
+        $user = auth()->user();
+
+        // Redirect based on user role
+        switch ($user->role) {
+            case 'admin':
+                if (Route::has('admin.dashboard')) {
+                    return redirect()->route('admin.dashboard');
+                }
+                return redirect('/admin');
+
+            case 'seller':
+                return redirect()->route('seller.dashboard');
+
+            case 'buyer':
+            default:
+                // FIX: Redirect ke main page instead of home
+                return redirect('/')->with('success', 'Welcome back!');
+        }
+    })->name('dashboard');
+});
 Route::get('/', [ProductController::class, 'index'])->name('home');
 Route::get('/products', [ProductController::class, 'index'])->name('products.index');
 Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
