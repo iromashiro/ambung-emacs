@@ -27,7 +27,7 @@
 
                     <hr>
 
-                    <!-- Cart Items by Store - FIXED VERSION -->
+                    <!-- Cart Items by Store -->
                     @foreach($cartItemsByStore as $storeId => $items)
                     @php
                     $store = $items[0]->product->seller->store ?? null;
@@ -59,16 +59,18 @@
                                 <div class="row align-items-center">
                                     <div class="col-auto">
                                         <div class="form-check">
+                                            <!-- FIXED: Add @change event to trigger calculation -->
                                             <input class="form-check-input item-checkbox" type="checkbox"
                                                 :id="'item-' + {{ $item->id }}" data-store="{{ $storeId }}"
-                                                value="{{ $item->id }}" @change="updateSelectAllStatus()"
+                                                value="{{ $item->id }}"
+                                                @change="updateSelectAllStatus(); updateTotals()"
                                                 x-model="selectedItems">
                                         </div>
                                     </div>
                                     <div class="col-md-2">
-                                        @if($item->product->image)
-                                        <img src="{{ Storage::url($item->product->image) }}" class="img-fluid rounded"
-                                            alt="{{ $item->product->name }}">
+                                        @if($item->product->images && $item->product->images->count() > 0)
+                                        <img src="{{ Storage::url($item->product->images->first()->path) }}"
+                                            class="img-fluid rounded" alt="{{ $item->product->name }}">
                                         @else
                                         <div class="bg-light d-flex align-items-center justify-content-center rounded"
                                             style="height: 80px;">
@@ -79,16 +81,8 @@
                                     <div class="col-md-4">
                                         <h6 class="mb-1">{{ $item->product->name }}</h6>
                                         <p class="text-muted small mb-0">
-                                            @if($item->product->original_price && $item->product->original_price >
-                                            $item->product->price)
                                             <span class="text-danger">Rp
                                                 {{ number_format($item->product->price, 0, ',', '.') }}</span>
-                                            <span class="text-decoration-line-through ms-1">Rp
-                                                {{ number_format($item->product->original_price, 0, ',', '.') }}</span>
-                                            @else
-                                            <span class="text-danger">Rp
-                                                {{ number_format($item->product->price, 0, ',', '.') }}</span>
-                                            @endif
                                         </p>
                                         @if($item->product->stock <= 5) <small class="text-warning">
                                             <i class="fas fa-exclamation-triangle"></i>
@@ -130,26 +124,6 @@
                                 </div>
                             </div>
                         </div>
-                        @else
-                        <!-- Handle invalid cart items -->
-                        <div class="card mb-3 border border-danger">
-                            <div class="card-body">
-                                <div class="row align-items-center">
-                                    <div class="col">
-                                        <div class="text-danger">
-                                            <i class="fas fa-exclamation-triangle me-2"></i>
-                                            This product is no longer available
-                                        </div>
-                                    </div>
-                                    <div class="col-auto">
-                                        <button class="btn btn-link text-danger p-0"
-                                            @click="removeItem({{ $item->id }})">
-                                            <i class="fas fa-trash-alt"></i> Remove
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                         @endif
                         @endforeach
                     </div>
@@ -169,9 +143,10 @@
                     <h5 class="mb-0">Order Summary</h5>
                 </div>
                 <div class="card-body">
+                    <!-- FIXED: Use computed values with proper reactivity -->
                     <div class="d-flex justify-content-between mb-2">
                         <span>Subtotal (<span x-text="selectedItems.length"></span> items)</span>
-                        <span class="fw-bold">Rp <span x-text="formatPrice(calculateSubtotal())"></span></span>
+                        <span class="fw-bold">Rp <span x-text="subtotalFormatted"></span></span>
                     </div>
                     <div class="d-flex justify-content-between mb-3">
                         <span>Shipping Fee</span>
@@ -180,7 +155,7 @@
                     <hr>
                     <div class="d-flex justify-content-between mb-3">
                         <span class="fw-bold">Total</span>
-                        <span class="fw-bold text-danger">Rp <span x-text="formatPrice(calculateTotal())"></span></span>
+                        <span class="fw-bold text-danger">Rp <span x-text="totalFormatted"></span></span>
                     </div>
                     <button class="btn btn-primary w-100 py-2" :disabled="selectedItems.length === 0" @click="checkout">
                         Proceed to Checkout (<span x-text="selectedItems.length"></span> items)
@@ -204,6 +179,9 @@
 </div>
 @endsection
 
+{{-- resources/views/buyer/cart/index.blade.php - BAGIAN SCRIPT YANG DIPERBAIKI --}}
+{{-- resources/views/buyer/cart/index.blade.php - BAGIAN SCRIPT YANG DIPERBAIKI --}}
+
 @section('scripts')
 <script>
     function cartPage() {
@@ -212,22 +190,23 @@
             selectAll: false,
             shippingFee: 0,
 
-            // FIXED: Properly structured cart items data
+            // Cart items data - FIXED: Pastikan data structure benar
             cartItems: [
                 @foreach($cartItems as $item)
+                @if($item->product)
                 {
                     id: {{ $item->id }},
                     quantity: {{ $item->quantity }},
                     product: {
-                        id: {{ $item->product->id ?? 0 }},
-                        name: "{{ $item->product->name ?? 'Unknown Product' }}",
-                        price: {{ $item->product->price ?? 0 }},
-                        stock: {{ $item->product->stock ?? 0 }},
-                        @if($item->product && $item->product->seller && $item->product->seller->store)
+                        id: {{ $item->product->id }},
+                        name: "{{ addslashes($item->product->name) }}",
+                        price: {{ $item->product->price }},
+                        stock: {{ $item->product->stock }},
+                        @if($item->product->seller && $item->product->seller->store)
                         seller: {
                             store: {
                                 id: {{ $item->product->seller->store->id }},
-                                name: "{{ $item->product->seller->store->name }}"
+                                name: "{{ addslashes($item->product->seller->store->name) }}"
                             }
                         }
                         @else
@@ -235,28 +214,59 @@
                         @endif
                     }
                 }@if(!$loop->last),@endif
+                @endif
                 @endforeach
             ],
 
             init() {
                 console.log('Cart initialized with items:', this.cartItems);
+                // FIXED: Auto-select semua items saat load
+                this.selectedItems = this.cartItems.map(item => item.id);
+                this.updateSelectAllStatus();
+                console.log('Initial selected items:', this.selectedItems);
+                console.log('Initial subtotal:', this.subtotal);
             },
 
-            // FIXED: Select All toggle
+            // FIXED: Computed properties dengan debugging
+            get subtotal() {
+                let total = 0;
+                console.log('Calculating subtotal for selected items:', this.selectedItems);
+
+                this.selectedItems.forEach(itemId => {
+                    const item = this.cartItems.find(cartItem => cartItem.id === itemId);
+                    if (item && item.product && item.product.price) {
+                        const itemTotal = item.product.price * item.quantity;
+                        console.log(`Item ${item.id}: ${item.product.price} x ${item.quantity} = ${itemTotal}`);
+                        total += itemTotal;
+                    }
+                });
+
+                console.log('Total subtotal:', total);
+                return total;
+            },
+
+            get subtotalFormatted() {
+                return this.formatPrice(this.subtotal);
+            },
+
+            get total() {
+                return this.subtotal + (this.selectedItems.length > 0 ? this.shippingFee : 0);
+            },
+
+            get totalFormatted() {
+                return this.formatPrice(this.total);
+            },
+
             toggleSelectAll() {
                 if (this.selectAll) {
-                    // Select all valid items
-                    this.selectedItems = this.cartItems
-                        .filter(item => item.product && item.product.id > 0)
-                        .map(item => item.id);
+                    this.selectedItems = [...this.cartItems.map(item => item.id)];
                 } else {
-                    // Deselect all
                     this.selectedItems = [];
                 }
                 console.log('Select all toggled. Selected items:', this.selectedItems);
+                console.log('New subtotal:', this.subtotal);
             },
 
-            // FIXED: Store toggle
             toggleStore(storeId) {
                 const storeItems = this.cartItems
                     .filter(item => {
@@ -272,10 +282,10 @@
                 );
 
                 if (allStoreItemsSelected) {
-                    // Remove all store items from selection
+                    // Remove all store items
                     this.selectedItems = this.selectedItems.filter(id => !storeItems.includes(id));
                 } else {
-                    // Add all store items to selection
+                    // Add all store items
                     storeItems.forEach(itemId => {
                         if (!this.selectedItems.includes(itemId)) {
                             this.selectedItems.push(itemId);
@@ -285,9 +295,9 @@
 
                 this.updateSelectAllStatus();
                 console.log('Store toggled. Selected items:', this.selectedItems);
+                console.log('New subtotal:', this.subtotal);
             },
 
-            // FIXED: Check if store is selected
             isStoreSelected(storeId) {
                 const storeItems = this.cartItems
                     .filter(item => {
@@ -303,49 +313,26 @@
             },
 
             updateSelectAllStatus() {
-                const validItems = this.cartItems.filter(item => item.product && item.product.id > 0);
-                this.selectAll = validItems.length > 0 &&
-                                validItems.every(item => this.selectedItems.includes(item.id));
+                this.selectAll = this.cartItems.length > 0 &&
+                                this.cartItems.every(item => this.selectedItems.includes(item.id));
             },
 
-            // FIXED: Get current quantity
             getItemQuantity(itemId) {
                 const item = this.cartItems.find(item => item.id === itemId);
                 return item ? item.quantity : 1;
             },
 
-            // FIXED: Get item price
             getItemPrice(itemId) {
                 const item = this.cartItems.find(item => item.id === itemId);
                 return item && item.product ? item.product.price : 0;
             },
 
-            // FIXED: Calculate subtotal with precision
-            calculateSubtotal() {
-                const total = this.cartItems
-                    .filter(item => this.selectedItems.includes(item.id))
-                    .reduce((sum, item) => {
-                        if (item.product && item.product.price) {
-                            return sum + (item.product.price * item.quantity);
-                        }
-                        return sum;
-                    }, 0);
-
-                return Math.round(total); // Ensure integer result
-            },
-
-            calculateTotal() {
-                return this.calculateSubtotal() + (this.selectedItems.length > 0 ? this.shippingFee : 0);
-            },
-
-            // FIXED: Format price properly
+            // FIXED: Format price dengan benar
             formatPrice(price) {
-                // Ensure it's a number and format with dots
-                const numPrice = typeof price === 'number' ? price : parseInt(price) || 0;
-                return numPrice.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+                const numPrice = typeof price === 'number' ? price : parseFloat(price) || 0;
+                return new Intl.NumberFormat('id-ID').format(numPrice);
             },
 
-            // FIXED: Update quantity
             updateQuantity(itemId, quantity) {
                 if (quantity < 1) return;
 
@@ -358,8 +345,11 @@
                     alert(`Maximum quantity is ${maxStock}`);
                 }
 
-                // Update local quantity immediately for UI responsiveness
+                // Update local quantity immediately
+                const oldQuantity = item.quantity;
                 item.quantity = quantity;
+                console.log(`Updated quantity for item ${itemId} from ${oldQuantity} to ${quantity}`);
+                console.log('New subtotal after quantity update:', this.subtotal);
 
                 // Update via AJAX
                 fetch('/cart/update', {
@@ -378,14 +368,17 @@
                 .then(response => response.json())
                 .then(data => {
                     if (!data.success) {
-                        // Revert on failure
                         alert(data.message || 'Failed to update quantity');
+                        // Revert local change
+                        item.quantity = oldQuantity;
                         location.reload();
                     }
                 })
                 .catch(error => {
                     console.error('Error updating quantity:', error);
                     alert('An error occurred while updating the quantity');
+                    // Revert local change
+                    item.quantity = oldQuantity;
                     location.reload();
                 });
             },
@@ -410,17 +403,14 @@
                     if (data.success) {
                         // Remove from selected items
                         this.selectedItems = this.selectedItems.filter(id => id !== itemId);
-
                         // Remove from cart items
                         const index = this.cartItems.findIndex(item => item.id === itemId);
                         if (index !== -1) {
                             this.cartItems.splice(index, 1);
                         }
-
-                        // Update UI
                         this.updateSelectAllStatus();
 
-                        // Reload page to reflect changes
+                        // Reload page after short delay to sync with server
                         setTimeout(() => window.location.reload(), 500);
                     } else {
                         alert(data.message || 'Failed to remove item');
@@ -463,27 +453,28 @@
             },
 
             checkout() {
-            if (this.selectedItems.length === 0) {
-            alert('Please select items to checkout');
-            return;
-            }
+                if (this.selectedItems.length === 0) {
+                    alert('Please select items to checkout');
+                    return;
+                }
 
-            // Create a form and submit it to checkout form
-            const form = document.createElement('form');
-            form.method = 'GET'; // Use GET to go to checkout form
-            form.action = '{{ route("checkout.index") }}';
+                console.log('Proceeding to checkout with items:', this.selectedItems);
+                console.log('Total amount:', this.total);
 
-            // FIXED: Send as cart_items[] (not cart_item_ids[])
-            this.selectedItems.forEach(itemId => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'cart_items[]'; // Changed from cart_item_ids[]
-            input.value = itemId;
-            form.appendChild(input);
-            });
+                const form = document.createElement('form');
+                form.method = 'GET';
+                form.action = '{{ route("checkout.index") }}';
 
-            document.body.appendChild(form);
-            form.submit();
+                this.selectedItems.forEach(itemId => {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'cart_items[]';
+                    input.value = itemId;
+                    form.appendChild(input);
+                });
+
+                document.body.appendChild(form);
+                form.submit();
             }
         };
     }

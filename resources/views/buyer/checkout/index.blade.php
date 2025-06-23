@@ -119,13 +119,8 @@
                                         <label for="payment_method" class="form-label">Payment Method *</label>
                                         <select class="form-select @error('payment_method') is-invalid @enderror"
                                             id="payment_method" name="payment_method" required>
-                                            <option value="">Select Payment Method</option>
                                             <option value="cod" {{ old('payment_method') === 'cod' ? 'selected' : '' }}>
                                                 Cash on Delivery (COD)
-                                            </option>
-                                            <option value="transfer"
-                                                {{ old('payment_method') === 'transfer' ? 'selected' : '' }}>
-                                                Bank Transfer
                                             </option>
                                         </select>
                                         @error('payment_method')

@@ -78,6 +78,14 @@ Route::middleware(['auth', 'role:buyer'])->group(function () {
     Route::get('/orders/{order}', [BuyerOrderController::class, 'show'])->name('buyer.orders.show');
     Route::patch('/orders/{order}/cancel', [BuyerOrderController::class, 'cancel'])->name('buyer.orders.cancel');
     Route::patch('/orders/{order}/confirm', [BuyerOrderController::class, 'confirmDelivery'])->name('buyer.orders.confirm');
+
+    Route::prefix('buyer')->name('buyer.')->group(function () {
+        Route::get('/profile', [App\Http\Controllers\Buyer\ProfileController::class, 'show'])->name('profile.show');
+        Route::get('/profile/edit', [App\Http\Controllers\Buyer\ProfileController::class, 'edit'])->name('profile.edit');
+        Route::patch('/profile', [App\Http\Controllers\Buyer\ProfileController::class, 'update'])->name('profile.update');
+        Route::patch('/profile/password', [App\Http\Controllers\Buyer\ProfileController::class, 'updatePassword'])->name('profile.password.update');
+        Route::delete('/profile', [App\Http\Controllers\Buyer\ProfileController::class, 'destroy'])->name('profile.destroy');
+    });
 });
 
 // Seller routes
@@ -146,6 +154,22 @@ Route::get('/debug/cart/{userId?}', function ($userId = null) {
         })
     ]);
 })->middleware('auth');
+
+// Fallback route untuk serve storage files jika symlink bermasalah
+Route::get('/storage/{path}', function ($path) {
+    $file = storage_path('app/public/' . $path);
+
+    if (!file_exists($file)) {
+        abort(404, 'File not found');
+    }
+
+    $mimeType = mime_content_type($file);
+
+    return response()->file($file, [
+        'Content-Type' => $mimeType,
+        'Cache-Control' => 'public, max-age=31536000',
+    ]);
+})->where('path', '.*')->name('storage.serve');
 
 include __DIR__ . '/auth.php';
 include __DIR__ . '/seller.php';

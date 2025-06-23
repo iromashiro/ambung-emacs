@@ -63,42 +63,44 @@
                     </li>
 
                     <!-- Authentication Links -->
-                    @guest
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('login') }}">Login</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ route('register') }}">Register</a>
-                    </li>
-                    @else
+                    {{-- resources/views/layouts/app.blade.php - Update bagian user dropdown --}}
+
+                    @auth
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button"
-                            data-bs-toggle="dropdown">
-                            <img src="{{ auth()->user()->profile_photo_url ?? 'https://ui-avatars.com/api/?name='.urlencode(auth()->user()->name) }}"
-                                class="rounded-circle me-1" width="24" height="24" alt="{{ auth()->user()->name }}">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            @if(auth()->user()->avatar)
+                            <img src="{{ Storage::url(auth()->user()->avatar) }}" class="rounded-circle me-1"
+                                style="width: 24px; height: 24px; object-fit: cover;" alt="{{ auth()->user()->name }}">
+                            @endif
                             {{ auth()->user()->name }}
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            @if(auth()->user()->role === 'admin')
-                            <li><a class="dropdown-item" href="{{ route('admin.dashboard') }}">Admin Dashboard</a></li>
+                        <ul class="dropdown-menu">
+                            @if(auth()->user()->role === 'buyer')
+                            <li><a class="dropdown-item" href="{{ route('buyer.profile.show') }}">
+                                    <i class="fas fa-user me-2"></i>My Profile
+                                </a></li>
                             @elseif(auth()->user()->role === 'seller')
-                            <li><a class="dropdown-item" href="{{ route('seller.dashboard') }}">Seller Dashboard</a>
-                            </li>
+                            <li><a class="dropdown-item" href="{{ route('seller.profile.show') }}">
+                                    <i class="fas fa-user me-2"></i>My Profile
+                                </a></li>
                             @endif
-                            <li><a class="dropdown-item" href="{{ route('profile.show') }}">My Profile</a></li>
-                            <li><a class="dropdown-item" href="{{ route('orders.index') }}">My Orders</a></li>
+                            <li><a class="dropdown-item" href="{{ route('orders.index') }}">
+                                    <i class="fas fa-shopping-bag me-2"></i>My Orders
+                                </a></li>
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
-                                    <button type="submit" class="dropdown-item">Logout</button>
+                                    <button type="submit" class="dropdown-item">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </button>
                                 </form>
                             </li>
                         </ul>
                     </li>
-                    @endguest
+                    @endauth
                 </ul>
             </div>
         </div>
