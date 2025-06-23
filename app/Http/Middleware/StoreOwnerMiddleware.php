@@ -19,18 +19,6 @@ class StoreOwnerMiddleware
             abort(403, 'Unauthorized action.');
         }
 
-        $store = $request->user()->store;
-
-        if (!$store) {
-            return redirect()->route('seller.stores.create')
-                ->with('error', 'You need to create a store first.');
-        }
-
-        if ($store->status !== 'active') {
-            return redirect()->route('seller.dashboard')
-                ->with('error', 'Your store is pending approval.');
-        }
-
         return $next($request);
     }
 }

@@ -121,7 +121,7 @@
                     <div class="card h-100 border-0 shadow-sm product-card">
                         <a href="{{ route('products.show', $product->slug) }}" class="text-decoration-none">
                             @if($product->images->isNotEmpty())
-                            <img src="{{ Storage::url($product->images->first()->image_url) }}" class="card-img-top"
+                            <img src="{{ Storage::url($product->images->first()->path) }}" class="card-img-top"
                                 alt="{{ $product->name }}">
                             @else
                             <img src="{{ asset('images/no-image.png') }}" class="card-img-top"
