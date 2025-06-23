@@ -20,9 +20,10 @@
             <div class="card border-0">
                 <!-- Main Product Image -->
                 <div class="text-center mb-3">
-                    @if($product->image)
-                    <img src="{{ Storage::url($product->image) }}" alt="{{ $product->name }}"
-                        class="img-fluid rounded shadow-sm" style="max-height: 400px; object-fit: cover;">
+                    @if($product->images)
+                    <img src="{{ Storage::url($product->images[0]->path) }}" alt="{{ $product->name }}"
+                        class="img-fluid rounded shadow-sm"
+                        style="height: 300px; width: 400px; max-height: 400px; object-fit: cover;">
                     @else
                     <div class="bg-light d-flex align-items-center justify-content-center rounded"
                         style="height: 400px;">
@@ -36,7 +37,7 @@
                 <div class="row g-2">
                     @foreach($product->images as $image)
                     <div class="col-3">
-                        <img src="{{ Storage::url($image) }}" alt="{{ $product->name }}"
+                        <img src="{{ Storage::url($image->path) }}" alt="{{ $product->name }}"
                             class="img-fluid rounded shadow-sm cursor-pointer" onclick="changeMainImage(this.src)">
                     </div>
                     @endforeach
@@ -208,6 +209,7 @@
                         @if($relatedProduct->image)
                         <img src="{{ Storage::url($relatedProduct->image) }}" class="card-img-top"
                             alt="{{ $relatedProduct->name }}" style="height: 200px; object-fit: cover;">
+                        {{$relatedProduct->image}}
                         @else
                         <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
                             <i class="fas fa-image fa-2x text-muted"></i>
