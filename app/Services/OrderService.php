@@ -44,18 +44,29 @@ class OrderService
     public function getOrdersByStore($store, array $options = [])
     {
         $limit = $options['limit'] ?? 10;
+        $status = $options['status'] ?? null;
 
-        return Order::whereHas('items.product', function ($q) use ($store) {
+        $query = Order::whereHas('items.product', function ($q) use ($store) {
             $q->where('seller_id', $store->seller_id);
         })
             ->with([
                 'user:id,name,email',
-                'items:id,order_id,product_id,quantity,price',
-                'items.product:id,name,seller_id'
+                // PERBAIKAN: Only load items that belong to this seller
+                'items' => function ($query) use ($store) {
+                    $query->whereHas('product', function ($q) use ($store) {
+                        $q->where('seller_id', $store->seller_id);
+                    });
+                },
+                'items.product:id,name,seller_id,price'
             ])
             ->select('orders.*')
-            ->orderBy('created_at', 'desc')
-            ->paginate($limit);
+            ->orderBy('created_at', 'desc');
+
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        return $query->paginate($limit);
     }
 
     public function getRecentOrders(User $user, array $filters = [])

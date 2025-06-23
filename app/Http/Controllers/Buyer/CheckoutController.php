@@ -147,13 +147,6 @@ class CheckoutController extends Controller
                     ->toArray();
             }
 
-            \Log::info('User cart verification', [
-                'user_id' => $userId,
-                'session_id' => $sessionId,
-                'user_cart_items' => $userCartItems,
-                'requested_cart_items' => $validated['cart_items']
-            ]);
-
             // Check if requested cart items belong to user
             $invalidCartItems = array_diff($validated['cart_items'], $userCartItems);
             if (!empty($invalidCartItems)) {
@@ -174,51 +167,78 @@ class CheckoutController extends Controller
 
             $cartItems = $validation['items'];
 
-            // Calculate total amount
-            $totalAmount = $cartItems->sum(function ($item) {
-                return $item->product->price * $item->quantity;
+            // PERBAIKAN UTAMA: Group cart items by store/seller
+            $itemsByStore = $cartItems->groupBy(function ($item) {
+                return $item->product->seller_id;
             });
 
-            \Log::info('Creating order', [
+            \Log::info('Cart items grouped by store', [
                 'user_id' => $userId,
-                'total_amount' => $totalAmount,
-                'cart_items_count' => $cartItems->count()
+                'stores_count' => $itemsByStore->count(),
+                'stores' => $itemsByStore->keys()->toArray()
             ]);
 
-            // Create order
-            $order = \App\Models\Order::create([
-                'buyer_id' => $userId,
-                'total_amount' => $totalAmount,
-                'status' => 'new',
-                'shipping_address' => $validated['shipping_address'],
-                'phone' => $validated['phone'],
-                'notes' => $validated['notes'] ?? null,
-            ]);
+            $createdOrders = [];
 
-            // Create order items
-            foreach ($cartItems as $cartItem) {
-                // Validate data
-                if (!$cartItem->product) {
-                    throw new \Exception("Product not found for cart item {$cartItem->id}");
-                }
+            // PERBAIKAN: Create separate order for each store
+            foreach ($itemsByStore as $sellerId => $storeItems) {
+                // Calculate total amount for this store
+                $storeTotal = $storeItems->sum(function ($item) {
+                    return $item->product->price * $item->quantity;
+                });
 
-                if (!$cartItem->quantity || $cartItem->quantity <= 0) {
-                    throw new \Exception("Invalid quantity for cart item {$cartItem->id}");
-                }
-
-                if (!$cartItem->product->price || $cartItem->product->price <= 0) {
-                    throw new \Exception("Invalid product price for cart item {$cartItem->id}");
-                }
-
-                $itemTotal = $cartItem->product->price * $cartItem->quantity;
-
-                \App\Models\OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $cartItem->product_id,
-                    'quantity' => (int)$cartItem->quantity,
-                    'price' => (float)$cartItem->product->price,
-                    'total' => (float)$itemTotal,
+                \Log::info('Creating order for store', [
+                    'seller_id' => $sellerId,
+                    'items_count' => $storeItems->count(),
+                    'store_total' => $storeTotal
                 ]);
+
+                // Create order for this store
+                $order = \App\Models\Order::create([
+                    'buyer_id' => $userId,
+                    'total_amount' => $storeTotal,
+                    'status' => 'new',
+                    'shipping_address' => $validated['shipping_address'],
+                    'phone' => $validated['phone'],
+                    'notes' => $validated['notes'] ?? null,
+                ]);
+
+                // Create order items for this store only
+                foreach ($storeItems as $cartItem) {
+                    // Validate data
+                    if (!$cartItem->product) {
+                        throw new \Exception("Product not found for cart item {$cartItem->id}");
+                    }
+
+                    if (!$cartItem->quantity || $cartItem->quantity <= 0) {
+                        throw new \Exception("Invalid quantity for cart item {$cartItem->id}");
+                    }
+
+                    if (!$cartItem->product->price || $cartItem->product->price <= 0) {
+                        throw new \Exception("Invalid product price for cart item {$cartItem->id}");
+                    }
+
+                    $itemTotal = $cartItem->product->price * $cartItem->quantity;
+
+                    \App\Models\OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $cartItem->product_id,
+                        'quantity' => (int)$cartItem->quantity,
+                        'price' => (float)$cartItem->product->price,
+                        'total' => (float)$itemTotal,
+                    ]);
+
+                    \Log::info('Created order item', [
+                        'order_id' => $order->id,
+                        'product_id' => $cartItem->product_id,
+                        'seller_id' => $cartItem->product->seller_id,
+                        'quantity' => $cartItem->quantity,
+                        'price' => $cartItem->product->price,
+                        'total' => $itemTotal
+                    ]);
+                }
+
+                $createdOrders[] = $order;
             }
 
             // Remove cart items after successful order
@@ -226,12 +246,20 @@ class CheckoutController extends Controller
 
             \Log::info('Checkout completed successfully', [
                 'user_id' => $userId,
-                'order_id' => $order->id
+                'orders_created' => count($createdOrders),
+                'order_ids' => array_map(fn($order) => $order->id, $createdOrders)
             ]);
 
-            // Redirect to order success page
-            return redirect()->route('buyer.orders.show', $order->id)
-                ->with('success', 'Order placed successfully!');
+            // Redirect to first order (or create a summary page later)
+            $firstOrder = $createdOrders[0];
+
+            if (count($createdOrders) > 1) {
+                return redirect()->route('buyer.orders.index')
+                    ->with('success', 'Orders placed successfully! You have ' . count($createdOrders) . ' orders from different stores.');
+            } else {
+                return redirect()->route('buyer.orders.show', $firstOrder->id)
+                    ->with('success', 'Order placed successfully!');
+            }
         } catch (\Exception $e) {
             \Log::error('Checkout error: ' . $e->getMessage(), [
                 'user_id' => auth()->id(),

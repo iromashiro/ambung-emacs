@@ -81,28 +81,22 @@ class OrderController extends Controller
             'limit' => 20
         ]);
 
-        // TAMBAH: Load relationships
-        $orders->load(['items.product', 'user']);
-
         return view('seller.orders.new', [
             'orders' => $orders,
         ]);
     }
 
     /**
-     * Display processing orders
+     * Display processing orders - FIXED: Use 'accepted' status
      */
     public function processing(Request $request): View
     {
         $store = auth()->user()->store;
 
         $orders = $this->orderService->getOrdersByStore($store, [
-            'status' => 'processing',
+            'status' => 'accepted', // PERBAIKAN: Gunakan 'accepted' bukan 'processing'
             'limit' => 20
         ]);
-
-        // TAMBAH: Load relationships
-        $orders->load(['items.product', 'user']);
 
         return view('seller.orders.processing', [
             'orders' => $orders,
@@ -110,19 +104,16 @@ class OrderController extends Controller
     }
 
     /**
-     * Display completed orders
+     * Display completed orders - FIXED: Use 'delivered' status
      */
     public function completed(Request $request): View
     {
         $store = auth()->user()->store;
 
         $orders = $this->orderService->getOrdersByStore($store, [
-            'status' => 'completed',
+            'status' => 'delivered', // PERBAIKAN: Gunakan 'delivered' bukan 'completed'
             'limit' => 20
         ]);
-
-        // TAMBAH: Load relationships
-        $orders->load(['items.product', 'user']);
 
         return view('seller.orders.completed', [
             'orders' => $orders,
@@ -141,9 +132,6 @@ class OrderController extends Controller
             'limit' => 20
         ]);
 
-        // TAMBAH: Load relationships
-        $orders->load(['items.product', 'user']);
-
         return view('seller.orders.canceled', [
             'orders' => $orders,
         ]);
@@ -156,27 +144,34 @@ class OrderController extends Controller
     {
         // Convert string to int to match OrderService::getOrderById signature
         $orderId = (int) $id;
-        $order = $this->orderService->getOrderById($orderId);
+        $order = Order::with([
+            'user:id,name,email',
+            // PERBAIKAN KRITIS: Only load items that belong to this seller
+            'items' => function ($query) {
+                $store = auth()->user()->store;
+                $query->whereHas('product', function ($q) use ($store) {
+                    $q->where('seller_id', $store->seller_id);
+                });
+            },
+            'items.product:id,name,seller_id,price'
+        ])->findOrFail($orderId);
 
-        if (!$order) {
-            abort(404, 'Order not found');
-        }
-
-        // PERBAIKI: Load relationships untuk calculation
-        $order->load(['items.product', 'user']);
-
-        // Check if user has permission to view this order
+        // Check if this order has any items from this seller
         $store = auth()->user()->store;
-        $hasPermission = $order->items->some(function ($item) use ($store) {
-            return $item->product->seller_id === $store->seller_id;
-        });
+        $hasPermission = $order->items->count() > 0;
 
         if (!$hasPermission) {
             abort(403, 'You do not have permission to view this order');
         }
 
+        // PERBAIKAN: Recalculate totals based on seller's items only
+        $sellerSubtotal = $order->items->sum(function ($item) {
+            return $item->price * $item->quantity;
+        });
+
         return view('seller.orders.show', [
             'order' => $order,
+            'sellerSubtotal' => $sellerSubtotal,
         ]);
     }
 

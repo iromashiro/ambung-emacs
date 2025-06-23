@@ -23,25 +23,15 @@
                 </form>
 
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
-                    <!-- Categories Dropdown -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="categoriesDropdown" role="button"
-                            data-bs-toggle="dropdown">
-                            <i class="fas fa-list me-1"></i> Categories
-                        </a>
-                        <ul class="dropdown-menu" aria-labelledby="categoriesDropdown">
-                            @foreach(\App\Models\Category::take(10)->get() as $category)
-                            <li><a class="dropdown-item"
-                                    href="{{ route('products.index', ['category' => $category->id]) }}">{{ $category->name }}</a>
-                            </li>
-                            @endforeach
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li><a class="dropdown-item" href="{{ route('categories.index') }}">All Categories</a></li>
-                        </ul>
+                    <!-- Authentication Links -->
+                    @guest
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('login') }}">Login</a>
                     </li>
-
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ route('register') }}">Register</a>
+                    </li>
+                    @else
                     <!-- Cart -->
                     <li class="nav-item">
                         <a class="nav-link position-relative" href="{{ route('cart.index') }}">
@@ -62,10 +52,6 @@
                         </a>
                     </li>
 
-                    <!-- Authentication Links -->
-                    {{-- resources/views/layouts/app.blade.php - Update bagian user dropdown --}}
-
-                    @auth
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             @if(auth()->user()->avatar)
@@ -100,7 +86,7 @@
                             </li>
                         </ul>
                     </li>
-                    @endauth
+                    @endguest
                 </ul>
             </div>
         </div>
