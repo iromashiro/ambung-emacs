@@ -12,8 +12,9 @@
             <div class="col-lg-4 col-md-6">
                 <div class="mb-4">
                     <h6 class="fw-bold mb-3">Contact Us</h6>
-                    <p class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> Jl. Raya Bogor No. 123, Jakarta</p>
-                    <p class="mb-2"><i class="fas fa-phone me-2"></i> +62 21 1234 5678</p>
+                    <p class="mb-2"><i class="fas fa-map-marker-alt me-2"></i> Jln. Tjik Agus Kiemas, Kabupaten Muara
+                        Enim, Sumatera Selatan 31471</p>
+                    <p class="mb-2"><i class="fas fa-phone me-2"></i> (0734) 423305</p>
                     <p class="mb-0"><i class="fas fa-envelope me-2"></i> ambungemacs@muaraenimkab.go.id</p>
                 </div>
             </div>
