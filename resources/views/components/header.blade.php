@@ -1,9 +1,8 @@
 <header>
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm py-3">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="{{ route('home') }}">
-                <img src="{{ asset('images/logo.png') }}" alt="Ambung e-MAC" height="70">
-                <span style="font: italic">Ambung e-MAC's</span>
+                <img src="{{ asset('images/logo.png') }}" alt="Ambung e-MAC" height="100px" width="270px">
             </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
