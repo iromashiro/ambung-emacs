@@ -201,29 +201,6 @@
                     <i class="fas fa-shopping-bag me-2"></i> All Orders
                 </a>
 
-                <a href="{{ route('seller.orders.new') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.new') ? 'active' : '' }}">
-                    <i class="fas fa-bell me-2 text-info"></i> New Orders
-                    @if(isset($newOrdersCount) && $newOrdersCount > 0)
-                    <span class="badge bg-danger ms-auto">{{ $newOrdersCount }}</span>
-                    @endif
-                </a>
-
-                <a href="{{ route('seller.orders.processing') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.processing') ? 'active' : '' }}">
-                    <i class="fas fa-cog me-2 text-warning"></i> Processing
-                </a>
-
-                <a href="{{ route('seller.orders.completed') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.completed') ? 'active' : '' }}">
-                    <i class="fas fa-check-circle me-2 text-success"></i> Completed
-                </a>
-
-                <a href="{{ route('seller.orders.canceled') }}"
-                    class="list-group-item list-group-item-action {{ request()->routeIs('seller.orders.canceled') ? 'active' : '' }}">
-                    <i class="fas fa-times-circle me-2 text-danger"></i> Canceled
-                </a>
-
                 <!-- Reports Menu -->
                 <div class="list-group-item bg-light border-0">
                     <small class="text-muted fw-bold">REPORTS</small>
