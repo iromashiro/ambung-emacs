@@ -183,7 +183,8 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <small class="text-muted">{{ $product->created_at->format('M d, Y') }}</small>
+                                        <small
+                                            class="text-muted">{{ $product->created_at?->format('M d, Y') ?? 'No Date' }}</small>
                                     </td>
                                     <td>
                                         <div class="dropdown">
